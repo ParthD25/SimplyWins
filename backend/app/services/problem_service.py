@@ -60,6 +60,9 @@ def _to_method_payload(method: MethodModel) -> MethodPayload:
             metric_definition_version=result.metric_definition_version,
             raw_artifact_uri=result.raw_artifact_uri,
             measured_at=result.measured_at.isoformat() if result.measured_at else None,
+            cost_state=DataState(result.cost_state),
+            run_id=result.run_id,
+            sample_count=result.sample_count,
         ),
     )
 

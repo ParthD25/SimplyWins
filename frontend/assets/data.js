@@ -47,8 +47,8 @@ export const benchmarkProblems = [
     rationale: 'Traditional text classification solves this job cleanly. The LLM approaches are unnecessary under the current business constraints.',
     requirements: { minAccuracy: 92, maxLatencyMs: 500, auditabilityRequired: true, monthlyVolume: 250000 },
     results: [
-      { id: 'ticket-rules', name: 'Keyword + Priority Rules', shortName: 'Rules', kind: 'rules', accuracy: 91.7, costPer1k: 0.01, latencyMs: 5, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Nearly clears the bar but struggles with ambiguous language.' },
-      { id: 'ticket-ml', name: 'TF-IDF + Logistic Regression', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 94.6, costPer1k: 0.03, latencyMs: 18, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Clears the threshold with very low operating cost.' },
+      { id: 'ticket-rules', name: 'Keyword + Priority Rules', shortName: 'Rules', kind: 'rules', accuracy: 75.69, costPer1k: 0.000001, latencyMs: 0.1077, deterministic: true, auditable: true, complexityRank: 1, resultState: 'MEASURED', notes: 'Nearly clears the bar but struggles with ambiguous language.' },
+      { id: 'ticket-ml', name: 'TF-IDF + Logistic Regression', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 89.5, costPer1k: 0.000008, latencyMs: 0.7144, deterministic: true, auditable: true, complexityRank: 2, resultState: 'MEASURED', notes: 'Clears the threshold with very low operating cost.' },
       { id: 'ticket-small', name: 'Small Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 95.2, costPer1k: 0.92, latencyMs: 240, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Marginal quality gain for much higher complexity.' },
       { id: 'ticket-frontier', name: 'Frontier LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 96.0, costPer1k: 6.7, latencyMs: 840, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Exceeds the default latency constraint.' },
     ],

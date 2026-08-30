@@ -139,7 +139,18 @@ const METHOD_COLORS = {
   'frontier-llm': '#e24a4a',
 };
 
-const money = (value) => `$${value.toFixed(2)}`;
+/* Sub-cent costs are real for local methods, so a flat two decimals would
+   print "$0.00" for a figure that is not zero. */
+const money = (value) => {
+  if (value === 0) return '$0.00';
+  if (value < 0.01) return `$${value.toPrecision(2)}`;
+  return `$${value.toFixed(2)}`;
+};
+
+/* Measured local methods run in fractions of a millisecond; rounding those to
+   an integer would display a real 0.11ms as "0ms". */
+const formatLatency = (ms) =>
+  (ms < 10 ? `${Number(ms.toFixed(2))}ms` : `${Math.round(ms)}ms`);
 const compact = (value) => Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
 const monthlyCost = (method, requirements) => method.costPer1k * (requirements.monthlyVolume / 1000);
 
@@ -183,7 +194,7 @@ function renderScatter(problem, requirements, recommendation) {
       const cx = x(method.costPer1k).toFixed(1);
       const cy = y(method.accuracy).toFixed(1);
       const ring = isWinner ? `<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#15966b" stroke-width="2"/>` : '';
-      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${method.latencyMs}ms. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
+      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${formatLatency(method.latencyMs)}. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
     }).join('')}
     <text x="${m.left + pw / 2}" y="${H - 8}" text-anchor="middle" class="axis-title">Cost per 1K tasks (USD, log scale)</text>
     <text x="14" y="${m.top + ph / 2}" text-anchor="middle" class="axis-title" transform="rotate(-90 14 ${m.top + ph / 2})">Accuracy (%)</text>
@@ -217,7 +228,7 @@ function renderChartTable(problem, requirements) {
       const evidence = countsAsEvidence(method);
       return `<tr class="${evidence ? '' : 'demo-row'}"><td><span class="method-badge method-${method.kind}">${method.shortName}</span></td>
         <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
-        <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
+        <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>
         <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -243,7 +254,7 @@ function renderKpis(problem, requirements, recommendation) {
     <div class="kpi"><span>Meets Requirements</span><strong class="${complete ? 'kpi-yes' : 'kpi-no'}">${complete ? '✓ Yes' : '—'}</strong></div>
     <div class="kpi"><span>Accuracy (Best)</span><strong>${value((w) => `${w.accuracy.toFixed(1)}%`)}</strong></div>
     <div class="kpi"><span>Est. Monthly Cost</span><strong>${value((w) => money(monthlyCost(w, requirements)))}</strong><small>at ${compact(requirements.monthlyVolume)} / month</small></div>
-    <div class="kpi"><span>Est. Latency (Best)</span><strong>${value((w) => `${w.latencyMs}ms`)}</strong></div>`;
+    <div class="kpi"><span>Est. Latency (Best)</span><strong>${value((w) => `${formatLatency(w.latencyMs)}`)}</strong></div>`;
 }
 
 /* States the evidence position before any numbers are read. Section 3.1
@@ -266,7 +277,7 @@ function renderRequirementChips(requirements) {
   if (!host) return;
   host.innerHTML = `
     <span class="req-chip">Accuracy ≥<strong>${requirements.minAccuracy}%</strong></span>
-    <span class="req-chip">Max latency ≤<strong>${requirements.maxLatencyMs}ms</strong></span>
+    <span class="req-chip">Max latency ≤<strong>${formatLatency(requirements.maxLatencyMs)}</strong></span>
     <span class="req-chip${requirements.auditabilityRequired ? '' : ' off'}">Auditability<strong>${requirements.auditabilityRequired ? 'Required' : 'Not required'}</strong></span>
     <span class="req-chip">Volume<strong>${compact(requirements.monthlyVolume)} / month</strong></span>`;
 }
@@ -282,7 +293,7 @@ function renderTable(problem, requirements, recommendation) {
     return `<tr class="${rowClass}">
       <td><div class="method-cell"><span class="method-badge method-${method.kind}">${method.shortName}</span><div><strong>${method.name}</strong><small>${method.notes}</small></div></div></td>
       <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
-      <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
+      <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>
       <td class="${method.auditable ? 'pass-label' : 'fail-label'}">${method.auditable ? '✓ Yes' : '× No'}</td>
       <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td>
     </tr>`;
@@ -351,7 +362,7 @@ export function setupBenchmarkPage() {
     volume.value = requirements.monthlyVolume;
     audit.checked = requirements.auditabilityRequired;
     document.querySelector('[data-accuracy-value]').textContent = `${requirements.minAccuracy}%`;
-    document.querySelector('[data-latency-value]').textContent = `${requirements.maxLatencyMs} ms`;
+    document.querySelector('[data-latency-value]').textContent = `${formatLatency(requirements.maxLatencyMs)}`;
     document.querySelector('[data-volume-value]').textContent = compact(requirements.monthlyVolume);
   };
 

@@ -60,7 +60,7 @@ class Requirements:
     """
 
     min_accuracy: float
-    max_latency_ms: int
+    max_latency_ms: float
     auditability_required: bool
     monthly_volume: int
 
@@ -77,7 +77,7 @@ class MethodCandidate:
     method_id: str
     complexity_rank: int
     accuracy: float
-    latency_ms: int
+    latency_ms: float
     cost_per_1k: float
     deterministic: bool
     auditable: bool
@@ -190,7 +190,7 @@ def evaluate_method(method: MethodCandidate, requirements: Requirements) -> Meth
     )
 
 
-def _selection_key(method: MethodCandidate) -> tuple[int, float, int, str]:
+def _selection_key(method: MethodCandidate) -> tuple[int, float, float, str]:
     """Ordering used to pick among passing methods.
 
     Complexity first (the product thesis), then the standard's tie-breaks: lower

@@ -1,6 +1,6 @@
 [project]
 name = "simplestwins-backend"
-version = "0.3.0"
+version = "0.4.0"
 description = "SimplestWins backend: benchmark problem definitions and the lowest-complexity-method recommendation service."
 requires-python = ">=3.12"
 dependencies = [
@@ -32,7 +32,7 @@ build-backend = "setuptools.build_meta"
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["seed/v1/*.json", "benchmarks/datasets/*/data/*.jsonl"]
+app = ["seed/*/*.json", "benchmarks/datasets/*/data/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

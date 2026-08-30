@@ -25,8 +25,9 @@ def seed():
 
 def test_seed_file_declares_its_version_and_data_state(seed) -> None:
     assert seed.seed_version
-    assert seed.data_state == "DEMO"
-    assert "demo" in seed.notice.lower()
+    # v2 carries promoted measured results alongside illustrative ones.
+    assert seed.data_state in {"DEMO", "MEASURED", "MIXED"}
+    assert "measured" in seed.notice.lower()
 
 
 def test_seed_contains_the_six_mvp_problems(seed) -> None:
@@ -71,16 +72,46 @@ def test_method_ids_are_unique_within_and_across_problems(seed) -> None:
     assert len(set(all_ids)) == len(all_ids)
 
 
-def test_every_result_is_demo_with_no_false_provenance(seed) -> None:
+def test_provenance_matches_the_claimed_state(seed) -> None:
+    """A MEASURED result must cite where it came from; a DEMO result must not
+    pretend to. This is the assertion that stops a figure being relabelled
+    without evidence behind it."""
     for problem in seed.problems:
-        assert problem.status.upper() == "DEMO", problem.slug
-        assert problem.dataset.sha256 is None
         for method in problem.methods:
-            assert method.result.result_state.value == "DEMO"
-            assert method.result.raw_artifact_uri is None
-            assert method.result.measured_at is None
-            assert method.provider is None
-            assert method.model_version is None
+            result = method.result
+            if result.result_state.value == "MEASURED":
+                assert result.run_id, method.method_id
+                assert result.raw_artifact_uri, method.method_id
+                assert result.measured_at, method.method_id
+                assert result.sample_count and result.sample_count > 0, method.method_id
+            else:
+                assert result.raw_artifact_uri is None, method.method_id
+                assert result.measured_at is None, method.method_id
+                assert result.run_id is None, method.method_id
+
+
+def test_a_measured_problem_cites_a_checksummed_dataset(seed) -> None:
+    for problem in seed.problems:
+        measured = [m for m in problem.methods if m.result.result_state.value == "MEASURED"]
+        if measured:
+            assert problem.dataset.sha256, problem.slug
+            assert problem.dataset.license, problem.slug
+            assert len(problem.dataset.sha256) == 64
+
+
+def test_problem_status_is_measured_only_when_every_method_is(seed) -> None:
+    for problem in seed.problems:
+        states = {m.result.result_state.value for m in problem.methods}
+        expected = "MEASURED" if states == {"MEASURED"} else "DEMO"
+        assert problem.status.upper() == expected, problem.slug
+
+
+def test_cost_is_never_claimed_as_measured(seed) -> None:
+    """Cost is projected from latency plus an assumption, so it is at best
+    ESTIMATED even when the result beside it is MEASURED."""
+    for problem in seed.problems:
+        for method in problem.methods:
+            assert method.result.cost_state.value != "MEASURED", method.method_id
 
 
 def test_metric_values_are_within_plausible_bounds(seed) -> None:

@@ -15,7 +15,7 @@ class RequirementsPayload(ApiSchema):
     """
 
     min_accuracy: float = Field(ge=0, le=100, description="Minimum accuracy percentage.")
-    max_latency_ms: int = Field(gt=0, description="Latency ceiling in milliseconds.")
+    max_latency_ms: float = Field(gt=0, description="Latency ceiling in milliseconds.")
     auditability_required: bool = Field(
         description="When true, only auditable methods are eligible."
     )
@@ -35,17 +35,31 @@ class DatasetPayload(ApiSchema):
 
 
 class ResultPayload(ApiSchema):
-    """One method's measured or illustrative performance on a problem."""
+    """One method's measured or illustrative performance on a problem.
+
+    ``cost_state`` is separate from ``result_state`` because cost is projected
+    from measured latency plus a dated rate assumption. A method can therefore
+    be MEASURED on quality while its cost is only ESTIMATED.
+    """
 
     result_state: DataState
     accuracy: float = Field(ge=0, le=100)
-    latency_p50_ms: int = Field(ge=0)
+    latency_p50_ms: float = Field(
+        ge=0, description="Median latency in ms; sub-millisecond values are real."
+    )
     cost_per_1k: float = Field(ge=0, description="Cost in USD per 1,000 units of work.")
     deterministic: bool
     auditable: bool
     metric_definition_version: str
     raw_artifact_uri: str | None = None
     measured_at: str | None = None
+    cost_state: DataState = DataState.DEMO
+    run_id: str | None = Field(
+        default=None, description="Benchmark run that produced a MEASURED result."
+    )
+    sample_count: int | None = Field(
+        default=None, description="Examples the measured result was scored over."
+    )
 
 
 class MethodPayload(ApiSchema):

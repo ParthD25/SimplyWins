@@ -40,28 +40,43 @@ def test_response_matches_documented_shape(client: TestClient) -> None:
     }
 
 
-def test_seeded_demo_data_produces_no_recommendation(client: TestClient) -> None:
-    """Every seeded result is DEMO, so the evidence rule (section 3.1) forbids
-    naming a winner however the requirements are set."""
+def test_partially_measured_problem_reports_its_progress(client: TestClient) -> None:
+    """support-ticket-routing has two of four methods measured. The evidence
+    rule (section 3.1) still forbids naming a winner, but the response must say
+    how far along the evidence is."""
     detail = client.get("/v1/problems/support-ticket-routing").json()
     body = post_recommend(client, "support-ticket-routing", **detail["default_requirements"])
 
     assert body["status"] == "BENCHMARK_INCOMPLETE"
     assert body["recommended_method_id"] is None
-    assert body["measured_count"] == 0
+    assert body["measured_count"] == 2
     assert body["method_count"] == 4
-    assert "0 of 4" in body["reason"]
+    assert "2 of 4" in body["reason"]
+
+
+def test_only_measured_methods_can_enter_the_passing_set(client: TestClient) -> None:
+    """The illustrative methods on this problem clear the bar on paper. They
+    must still be excluded from the passing set."""
+    body = post_recommend(client, "support-ticket-routing", min_accuracy=50)
+    evidence = {e["method_id"] for e in body["evaluations"] if e["counts_as_evidence"]}
+
+    assert evidence == {"ticket-rules", "ticket-ml"}
+    assert set(body["passing_method_ids"]) <= evidence
+    assert "ticket-frontier" not in body["passing_method_ids"]
+
+
+def test_best_measured_is_reported_but_is_not_a_recommendation(
+    client: TestClient,
+) -> None:
+    body = post_recommend(client, "support-ticket-routing", min_accuracy=70)
+
+    assert body["best_measured_method_id"] in {"ticket-rules", "ticket-ml"}
+    assert body["recommended_method_id"] is None
 
 
 def test_demo_methods_are_returned_but_never_recommended(client: TestClient) -> None:
     """The comparison set is still visible; it simply carries no verdict."""
-    body = post_recommend(
-        client,
-        "support-ticket-routing",
-        min_accuracy=91,
-        max_latency_ms=500,
-        auditability_required=True,
-    )
+    body = post_recommend(client, "invoice-field-extraction", min_accuracy=91)
 
     assert body["recommended_method_id"] is None
     assert len(body["evaluations"]) == 4
@@ -69,10 +84,10 @@ def test_demo_methods_are_returned_but_never_recommended(client: TestClient) -> 
     assert all(item["counts_as_evidence"] is False for item in body["evaluations"])
 
 
-def test_passing_set_is_empty_while_all_results_are_demo(client: TestClient) -> None:
+def test_passing_set_is_empty_when_nothing_is_measured(client: TestClient) -> None:
     """A DEMO row may satisfy the constraints, but it is not evidence, so it
     cannot enter the passing set or the Pareto frontier."""
-    body = post_recommend(client, "support-ticket-routing", min_accuracy=50)
+    body = post_recommend(client, "invoice-field-extraction", min_accuracy=50)
 
     assert body["passing_method_ids"] == []
     assert body["best_measured_method_id"] is None
@@ -237,6 +252,6 @@ def test_no_problem_names_a_winner_while_its_results_are_demo(
 
     assert body["status"] == "BENCHMARK_INCOMPLETE"
     assert body["recommended_method_id"] is None
-    assert body["measured_count"] == 0
+    assert body["measured_count"] < body["method_count"]
     # The method that would win once measured is still visible in the set.
     assert expected in {item["method_id"] for item in body["evaluations"]}

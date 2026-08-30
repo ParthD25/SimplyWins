@@ -101,20 +101,24 @@ class Result(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
     method_id: Mapped[str] = mapped_column(ForeignKey("method.id", ondelete="CASCADE"), unique=True)
-    run_id: Mapped[str | None] = mapped_column(
-        ForeignKey("benchmark_run.id", ondelete="SET NULL"), nullable=True
-    )
+    # Free-text run identifier from the published record. Not a foreign key:
+    # the run may have been executed outside this database entirely.
+    run_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     result_state: Mapped[str] = mapped_column(String(16))
     accuracy: Mapped[float] = mapped_column(Float)
     task_success_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
-    latency_p50_ms: Mapped[int] = mapped_column(Integer)
-    latency_p95_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_p50_ms: Mapped[float] = mapped_column(Float)
+    latency_p95_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     cost_per_1k: Mapped[float] = mapped_column(Float)
     deterministic: Mapped[bool] = mapped_column(Boolean)
     auditable: Mapped[bool] = mapped_column(Boolean)
     metric_definition_version: Mapped[str] = mapped_column(String(32))
     raw_artifact_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
     measured_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Cost is derived from measured latency plus an assumption, so it carries a
+    # weaker state than the result it accompanies.
+    cost_state: Mapped[str] = mapped_column(String(16), default="DEMO")
+    sample_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     method: Mapped[Method] = relationship(back_populates="result")
 
