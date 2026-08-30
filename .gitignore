@@ -20,3 +20,6 @@ backend/runs/
 
 # Alembic scratch database used by the migration drift check
 backend/ci.db
+
+# setuptools build artifacts
+build/
