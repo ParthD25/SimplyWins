@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.7.0 — Rate limiting
+- **Every endpoint except `/health` is now rate limited**, closing the last
+  requirement in section 11 of `PROJECT_STANDARD.md` that had no
+  implementation. A token bucket keyed on the client address: `RateLimit-Limit`
+  and `RateLimit-Remaining` on allowed responses, and a `429` carrying the
+  standard error envelope plus `Retry-After` in whole seconds, rounded up so a
+  client that obeys it is not sent back early to be rejected again.
+- **A token bucket rather than a fixed window**, because a fixed window lets a
+  client spend its whole allowance at the end of one window and again at the
+  start of the next — twice the intended rate across the boundary.
+- **`X-Forwarded-For` is not trusted by default.** Honouring it unconditionally
+  would let any client pick a fresh bucket per request by varying a header,
+  which does not weaken the limit but removes it. It is used only when a
+  deployment declares it sits behind a proxy that sets the header. A test
+  asserts a varying header cannot evade the limit, and it was confirmed to have
+  teeth: forcing the header to always be trusted makes that test fail.
+- **`/health` is exempt on purpose.** Orchestrators poll it continuously, and a
+  limiter that can fail those probes causes the restart loop it exists to
+  prevent.
+- The limiter is installed inside CORS so a throttled cross-origin caller still
+  receives CORS headers on its 429; without them the browser reports an opaque
+  network error and the client never sees the status it needs to back off from.
+  Asserted by a test rather than reasoned about.
+- Idle buckets are evicted, because the keys are client-controlled and an
+  unbounded table keyed by client address is itself a denial-of-service vector.
+- The clock is `time.monotonic`; wall-clock time can jump backwards and hand out
+  free allowance.
+- Stated plainly in `docs/DEPLOYMENT.md`: the bucket lives in process memory, so
+  it limits per replica rather than per deployment. One container today, so the
+  two coincide — but it is not a substitute for an edge rule.
+- `error_response` in `app/errors.py` is now public, because exception handlers
+  registered on the app run *inside* the user middleware stack: an `ApiError`
+  raised from middleware never reaches them and would surface as a 500. The
+  middleware builds the envelope directly, through the one function that
+  defines its shape.
+- 153 tests pass.
+
 ## 0.6.1 — The CI gate actually gates
 - **The frontend syntax check was inert.** `node --check <file>` returns 0
   *without parsing* when Node detects a `.js` file as an ES module, and all

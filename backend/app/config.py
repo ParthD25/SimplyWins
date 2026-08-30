@@ -22,10 +22,24 @@ class Settings:
     seed_version: str
     cors_allow_origins: tuple[str, ...]
     log_level: str
+    rate_limit_enabled: bool
+    rate_limit_burst: int
+    rate_limit_per_second: float
+    # Only set this when a proxy in front of the API overwrites
+    # X-Forwarded-For. If it is on and nothing sets that header, any client can
+    # choose its own rate-limit bucket, which removes the limit entirely.
+    rate_limit_trust_forwarded_for: bool
 
 
 def _split_origins(raw: str) -> tuple[str, ...]:
     return tuple(origin.strip() for origin in raw.split(",") if origin.strip())
+
+
+def _flag(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 @lru_cache(maxsize=1)
@@ -42,4 +56,11 @@ def get_settings() -> Settings:
             )
         ),
         log_level=os.getenv("SIMPLESTWINS_LOG_LEVEL", "INFO"),
+        # Defaults are generous for a read-only API whose pages fetch a handful
+        # of documents: they stop one client hammering the service without
+        # tripping on ordinary browsing.
+        rate_limit_enabled=_flag("SIMPLESTWINS_RATE_LIMIT_ENABLED", True),
+        rate_limit_burst=int(os.getenv("SIMPLESTWINS_RATE_LIMIT_BURST", "60")),
+        rate_limit_per_second=float(os.getenv("SIMPLESTWINS_RATE_LIMIT_PER_SECOND", "5")),
+        rate_limit_trust_forwarded_for=_flag("SIMPLESTWINS_RATE_LIMIT_TRUST_FORWARDED_FOR", False),
     )

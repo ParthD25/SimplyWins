@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.db import create_all, get_session_factory
 from app.errors import register_exception_handlers
 from app.logging_config import configure_logging
+from app.rate_limit import RateLimitMiddleware, TokenBucketLimiter
 from app.repositories.problem_repository import SqlAlchemyProblemRepository
 from app.schemas.common import ApiSchema
 from app.seed.loader import seed_problems
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 API_TITLE = "SimplestWins API"
 # Application release version. The /v1 path prefix is the contract version and
 # changes only on a breaking schema change.
-API_VERSION = "0.6.1"
+API_VERSION = "0.7.0"
 
 
 class HealthResponse(ApiSchema):
@@ -62,6 +63,18 @@ def create_app() -> FastAPI:
         ),
         lifespan=lifespan,
     )
+    # Added before CORS so that CORS runs first on the way in: a throttled
+    # cross-origin caller still needs the CORS headers on its 429, or the
+    # browser reports an opaque network error instead of the real status.
+    if settings.rate_limit_enabled:
+        app.add_middleware(
+            RateLimitMiddleware,
+            limiter=TokenBucketLimiter(
+                burst=settings.rate_limit_burst,
+                rate_per_second=settings.rate_limit_per_second,
+            ),
+            trust_forwarded_for=settings.rate_limit_trust_forwarded_for,
+        )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_allow_origins),

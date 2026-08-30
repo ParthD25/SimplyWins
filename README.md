@@ -76,7 +76,7 @@ so on the page. Set `window.SIMPLESTWINS_API_BASE` to point it at an API.
 
 ```bash
 scripts/ci.sh              # everything CI runs
-scripts/ci.sh backend      # lint, format, types, migration drift, 137 tests, benchmark smoke
+scripts/ci.sh backend      # lint, format, types, migration drift, 153 tests, benchmark smoke
 scripts/ci.sh frontend     # ESM syntax, then 5 pages x 2 widths in a real browser
 ```
 
@@ -93,7 +93,6 @@ run and its `bin/` on `PATH`; the frontend half expects
 - **`POST /v1/runs` does not exist.** Running benchmarks on demand costs money
   once a provider is connected; the endpoint should not exist before
   authentication and cost controls do.
-- **No rate limiting**, so the API is not ready to be exposed publicly.
 - **The dataset is synthetic.** Its
   [card](backend/app/benchmarks/datasets/support_ticket_routing/DATASET.md)
   records five material limitations. Replacing it with a real, licensed corpus

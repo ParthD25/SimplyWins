@@ -62,15 +62,48 @@ Add the driver, which is not a default dependency:
 pip install "psycopg[binary]"
 ```
 
-## Before exposing a public instance
+## Rate limiting
+
+Every endpoint except `/health` is throttled by a token bucket keyed on the
+client address. Health is exempt on purpose: orchestrators poll it continuously,
+and a limiter that can fail those probes causes the restart loop it exists to
+prevent.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SIMPLESTWINS_RATE_LIMIT_ENABLED` | `true` | Set false to disable entirely. |
+| `SIMPLESTWINS_RATE_LIMIT_BURST` | `60` | Requests allowed back-to-back. |
+| `SIMPLESTWINS_RATE_LIMIT_PER_SECOND` | `5` | Sustained refill rate. |
+| `SIMPLESTWINS_RATE_LIMIT_TRUST_FORWARDED_FOR` | `false` | See below. |
+
+Allowed responses carry `RateLimit-Limit` and `RateLimit-Remaining`. A rejected
+one is `429` with the standard error envelope, code `rate_limited`, plus
+`Retry-After` in whole seconds rounded up — so a client that obeys it is not
+sent back early to be rejected again.
+
+**Two limits worth knowing before relying on it.**
+
+*The bucket lives in process memory*, so it limits per replica, not per
+deployment: two replicas behind a load balancer allow twice the configured rate.
+The service runs as one container today, so the two coincide — when that stops
+being true, this needs a shared store, and it is not a substitute for an edge or
+WAF rule in front of the service.
+
+*`SIMPLESTWINS_RATE_LIMIT_TRUST_FORWARDED_FOR` must stay off unless a proxy in
+front of the API overwrites `X-Forwarded-For`.* With it on and nothing setting
+that header, a client can choose its own bucket by varying the header — which
+does not weaken the limit, it removes it. Off by default for that reason, and
+there is a test asserting a varying header cannot evade the limit.
+
+## Still missing
 
 Not yet built, and load-bearing if the API is opened to the internet:
 
-- **Rate limiting.** Section 11 of `PROJECT_STANDARD.md` requires it on public
-  run endpoints. The read endpoints are cheap, but nothing throttles them.
 - **`POST /v1/runs`.** Deliberately absent. Executing benchmarks on demand
   costs money once a model provider is connected, so the endpoint should not
   exist until authentication and cost controls do.
+
+## Before exposing a public instance
 
 The read-only API as it stands is safe to expose: it serves seeded definitions
 and computes a pure function over caller-supplied requirements. It touches no

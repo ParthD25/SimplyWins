@@ -41,7 +41,17 @@ class ProblemNotFoundError(ApiError):
     code = "problem_not_found"
 
 
-def _envelope(code: str, message: str, details: dict[str, Any], status_code: int) -> JSONResponse:
+def error_response(
+    code: str, message: str, details: dict[str, Any], status_code: int
+) -> JSONResponse:
+    """Build the one error envelope this API emits.
+
+    Public because middleware needs it too: exception handlers registered on the
+    app run *inside* the user middleware stack, so an ApiError raised from
+    middleware never reaches them and would surface as a 500. Middleware
+    therefore builds the envelope directly — through this function, so there is
+    still exactly one place the shape is defined.
+    """
     body = ErrorResponse(error=ErrorDetail(code=code, message=message, details=details))
     return JSONResponse(status_code=status_code, content=body.model_dump(mode="json"))
 
@@ -49,11 +59,11 @@ def _envelope(code: str, message: str, details: dict[str, Any], status_code: int
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def handle_api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return _envelope(exc.code, exc.message, exc.details, exc.status_code)
+        return error_response(exc.code, exc.message, exc.details, exc.status_code)
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
-        return _envelope(
+        return error_response(
             "validation_error",
             "The request payload failed validation.",
             {"errors": exc.errors()},
@@ -62,7 +72,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        return _envelope(
+        return error_response(
             "http_error",
             str(exc.detail),
             {},
@@ -74,7 +84,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         # The message is deliberately generic; the detail goes to the log, not
         # to the client.
         logger.exception("Unhandled exception", extra={"error_type": type(exc).__name__})
-        return _envelope(
+        return error_response(
             "internal_error",
             "An unexpected error occurred.",
             {},
