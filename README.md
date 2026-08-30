@@ -48,7 +48,8 @@ from measured latency plus a dated compute rate — and never claimed otherwise.
 frontend/     Static site. No build step. Works with or without the backend.
 backend/      FastAPI service, benchmark runner, datasets, migrations.
 docs/         Product spec, data model, API contract, deployment, QA.
-ci/           Browser gate run by GitHub Actions.
+ci/           Browser gate.
+scripts/      ci.sh — every check CI runs, runnable locally.
 ```
 
 ## Run it
@@ -74,12 +75,16 @@ so on the page. Set `window.SIMPLESTWINS_API_BASE` to point it at an API.
 ## Checks
 
 ```bash
-cd backend && .venv/bin/python -m pytest    # 136 tests
-.venv/bin/ruff check . && .venv/bin/mypy app
-node ci/render-check.mjs                    # from the repo root
+scripts/ci.sh              # everything CI runs
+scripts/ci.sh backend      # lint, format, types, migration drift, 137 tests, benchmark smoke
+scripts/ci.sh frontend     # ESM syntax, then 5 pages x 2 widths in a real browser
 ```
 
-CI runs all of it, plus a migration drift check and a benchmark smoke run.
+GitHub Actions installs dependencies and then calls this same script, so a green
+run here is the same set of checks — there is no second copy in the workflow YAML
+to drift from it. The backend half expects `pip install -e ".[dev]"` to have been
+run and its `bin/` on `PATH`; the frontend half expects
+`npm install --no-save playwright`.
 
 ## What is deliberately not built
 

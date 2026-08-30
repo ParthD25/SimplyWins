@@ -4,18 +4,20 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets a run be started by hand, which matters when a run has failed for a
+  # reason outside the code and needs retrying once that is resolved.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Both jobs delegate to scripts/ci.sh so the checks CI runs and the checks a
+# contributor can run locally are the same commands, not two copies that drift.
 jobs:
   backend:
     name: Backend (tests, lint, types)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -23,35 +25,14 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: backend/pyproject.toml
 
       - name: Install
+        working-directory: backend
         run: pip install -e ".[dev]"
 
-      - name: Lint
-        run: ruff check .
-
-      - name: Format
-        run: ruff format --check .
-
-      - name: Types
-        run: mypy app
-
-      - name: Migrations match models
-        # A model change without a migration reaches development but never
-        # production; this is what catches it.
-        run: |
-          alembic upgrade head
-          alembic check
-        env:
-          SIMPLESTWINS_DATABASE_URL: sqlite+pysqlite:///./ci.db
-
-      - name: Tests
-        run: pytest -q
-
-      - name: Benchmark smoke test
-        # The runner is a deliverable, so a change that breaks it must fail CI
-        # rather than being discovered the next time someone runs a benchmark.
-        run: python -m app.benchmarks.cli run support-ticket-routing --method ticket-rules
+      - name: Checks
+        run: scripts/ci.sh backend
 
   frontend:
     name: Frontend (syntax, render, accessibility)
@@ -63,11 +44,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Syntax check
-        run: for f in frontend/assets/*.js; do node --check "$f"; done
-
       - name: Install Playwright
         run: npm install --no-save playwright && npx playwright install --with-deps chromium
 
-      - name: Render checks
-        run: node ci/render-check.mjs
+      - name: Checks
+        run: scripts/ci.sh frontend

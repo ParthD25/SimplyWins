@@ -1,6 +1,6 @@
 [project]
 name = "simplestwins-backend"
-version = "0.5.0"
+version = "0.6.1"
 description = "SimplestWins backend: benchmark problem definitions and the lowest-complexity-method recommendation service."
 requires-python = ">=3.12"
 dependencies = [

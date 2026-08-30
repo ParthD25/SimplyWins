@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.6.1 — The CI gate actually gates
+- **The frontend syntax check was inert.** `node --check <file>` returns 0
+  *without parsing* when Node detects a `.js` file as an ES module, and all
+  three frontend modules are ESM — the step passed `export const a = = 1`. It
+  had never checked anything since being written. Replaced with a real parse via
+  `--input-type=module`, which reports against `[stdin]`, so the filename is
+  printed alongside. **Verified by breaking `api.js`, `app.js` and `data.js` in
+  turn: each is now caught and named.**
+- **A loop was swallowing failures.** `for f in ...; do node --check "$f"; done`
+  exits with the last file's status, so a broken `api.js` would have passed as
+  long as `data.js` parsed. Failures are collected explicitly.
+- **A machine-local `node_modules` symlink had been committed**, pointing into a
+  scratch directory on the machine the work was done on. `.gitignore` listed
+  `node_modules/`, but a trailing slash matches directories only and a symlink
+  is not one. Confirmed against a clean clone of `main`, which received a
+  dangling symlink where `node_modules` belongs. Removed, and the pattern now
+  covers both spellings.
+- `scripts/ci.sh` holds every check CI runs and both jobs call it, so the
+  workflow and a local run cannot drift into two different sets of checks.
+- Added `workflow_dispatch`, and pinned the pip cache to
+  `backend/pyproject.toml`.
+- Recorded for the next person: every CI run between 0.5.0 and 0.6.0 failed
+  three to four seconds after starting, with no runner assigned, no steps and no
+  logs. That is GitHub declining to allocate a runner — an account-level Actions
+  state, not a fault in the workflow — and no change to this repository can fix
+  it.
+- **The version drifted a second time.** The changelog said 0.6.0 while both
+  `pyproject.toml` and the served `API_VERSION` said 0.5.0. The existing test
+  bound the served version to the package but left the changelog free, so it
+  passed. All three now read 0.6.1, and a test binds the changelog's newest
+  heading to the package version — verified by pointing it at 0.9.9 and
+  watching it fail.
+- Verified against a clean clone on Python 3.12: ruff, format, strict mypy,
+  migrations plus drift check, 137 tests, benchmark smoke, ESM syntax and the
+  browser gate all pass.
+
 ## 0.6.0 — Deployable backend, enforced QA
 - Added `backend/Dockerfile` and `docs/DEPLOYMENT.md`. The image installs only
   the API's dependencies — the benchmark runner's scikit-learn stack is never

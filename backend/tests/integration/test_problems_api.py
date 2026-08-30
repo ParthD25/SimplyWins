@@ -194,3 +194,25 @@ def test_reported_api_version_matches_the_package(client: TestClient) -> None:
     expected = tomllib.load(pyproject.open("rb"))["project"]["version"]
 
     assert client.get("/health").json()["api_version"] == expected
+
+
+def test_changelog_documents_the_current_version() -> None:
+    """The served version and the package version were already held together by
+    a test; the changelog was not, and drifted to 0.6.0 while both of the others
+    said 0.5.0. A release note for a version nobody is running is worse than
+    none, because it is believed."""
+    import re
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    pyproject = root / "backend" / "pyproject.toml"
+    expected = tomllib.load(pyproject.open("rb"))["project"]["version"]
+
+    changelog = (root / "CHANGELOG.md").read_text()
+    headings = re.findall(r"^## (\d+\.\d+\.\d+)", changelog, re.MULTILINE)
+
+    assert headings, "CHANGELOG.md has no versioned headings"
+    assert headings[0] == expected, (
+        f"CHANGELOG.md's newest entry is {headings[0]}, but the package is {expected}"
+    )
