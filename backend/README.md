@@ -4,8 +4,11 @@ FastAPI service that owns the benchmark problem definitions and applies the
 SimplestWins decision rule: **the lowest-complexity method that satisfies every
 hard operating requirement wins, and when nothing satisfies them, nothing wins.**
 
-Phase 2 (Backend Foundation) is complete. No model-provider API is connected and
-no benchmark runner exists yet — those are Phase 3.
+Phase 2 (Backend Foundation) and the first half of Phase 3 (benchmark runner)
+are complete. **No model-provider API is connected.** The runner executes the
+methods that can run locally — deterministic rules and traditional ML — and
+`support-ticket-routing` now has genuinely measured results. See
+`app/benchmarks/README.md`.
 
 ## Install
 
@@ -36,7 +39,7 @@ The database is created and seeded on startup. Interactive API docs are at
 ## Test
 
 ```bash
-.venv/bin/python -m pytest          # 63 tests
+.venv/bin/python -m pytest          # 112 tests
 .venv/bin/ruff check .              # lint
 .venv/bin/ruff format --check .     # formatting
 .venv/bin/mypy app                  # strict type check
@@ -153,7 +156,8 @@ Deliberately **not** built, and not to be added without explicit approval:
   `docs/BACKEND_CONTRACT.md` requires before run endpoints are exposed
 - replacing the frontend's local `data.js` with live `/v1` fetches (Phase 5)
 
-Next: Phase 3, the benchmark runner, starting with **Support Ticket Routing** —
-keyword rules, TF-IDF + logistic regression, a small local classifier, and a
-frontier LLM prompt, evaluated on one dataset version with one metric
-definition. Only then do any of these numbers become `MEASURED`.
+Next: decide how measured results reach the API. Two of four methods on
+`support-ticket-routing` are now `MEASURED`; the other two remain `DEMO`
+because no model provider is connected. Blending states inside one comparison
+would produce a recommendation drawn from a mix of evidence and illustration,
+so that integration needs a deliberate decision rather than a quiet merge.

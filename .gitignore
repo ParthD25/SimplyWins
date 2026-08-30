@@ -14,3 +14,6 @@ dist/
 *.sqlite3
 *.db
 coverage/
+
+# Benchmark working output; published runs live in backend/benchmarks/published/
+backend/runs/

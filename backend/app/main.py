@@ -21,7 +21,9 @@ from app.seed.loader import seed_problems
 logger = logging.getLogger(__name__)
 
 API_TITLE = "SimplestWins API"
-API_VERSION = "0.2.0"
+# Application release version. The /v1 path prefix is the contract version and
+# changes only on a breaking schema change.
+API_VERSION = "0.3.0"
 
 
 class HealthResponse(ApiSchema):

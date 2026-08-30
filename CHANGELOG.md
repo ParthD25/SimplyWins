@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.3.0 — Benchmark runner and the first measured results (Phase 3, part 1)
+- Added the benchmark runner: `BenchmarkMethod` protocol, deterministic scoring,
+  and an immutable run record carrying every field section 4 of
+  `PROJECT_STANDARD.md` requires. Raw per-example predictions are written before
+  aggregation, so a published score can always be recomputed from the artifact.
+- Added `support-ticket-routing` as the first real benchmark: a 4,000-example
+  synthetic dataset (150 hand-written phrasings, ~40% deliberately hard cases),
+  keyword routing rules, and TF-IDF + logistic regression.
+- **First measured numbers in the project.** On 1,600 held-out examples:
+  rules 75.69% accuracy / ~0.11ms p50; traditional ML 89.50% / ~0.71ms.
+  Accuracy and macro F1 are `MEASURED` and reproduce exactly; latency is
+  measured but noisy; cost is `ESTIMATED` from latency plus a dated compute
+  rate, never claimed as measured.
+- The measured result contradicts the demo figures the frontend shows. Demo
+  data put rules at 91.7% and ML at 94.6%; measurement puts rules 14 points
+  behind ML. The illustrative numbers flattered the rules baseline.
+- The dataset split is **template-disjoint**. An earlier random split let a
+  character n-gram model score 98.75% by memorising phrasing fingerprints —
+  72% of test examples shared their opening words with a training example.
+  That measured recall of the generator, not generalisation.
+- The template pool was expanded from 12 to 30 phrasings per class after the
+  first template-disjoint split left too little shared vocabulary to learn
+  from: every configuration scored near the 20% chance baseline.
+- The ML configuration was selected on a template-disjoint validation split
+  carved from the training data. The evaluation split was never consulted.
+- `--publish` promotes a run to `benchmarks/published/`, the only place the
+  product may cite from, keeping exploratory runs distinct from results.
+- scikit-learn is an optional extra; the API does not import it.
+- Documentation: `app/benchmarks/README.md` and a dataset card recording
+  provenance, licence, the split policy, and five material limitations.
+- 112 tests pass; ruff and strict mypy clean.
+
+Not built: any model-provider call, so no small-model or frontier-LLM result
+exists. Measured results are not yet served through `/v1`.
+
 ## 0.2.0 — Backend foundation (Phase 2)
 - Added a FastAPI service under `backend/` with `GET /health`, `GET /v1/problems`,
   `GET /v1/problems/{slug}`, and `POST /v1/problems/{slug}/recommend`.
