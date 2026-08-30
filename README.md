@@ -2,39 +2,102 @@
 
 **Does this actually need AI?**
 
-SimplestWins benchmarks multiple technical approaches to a task and recommends the least-complex method that still satisfies the real operating requirements.
+SimplestWins benchmarks several technical approaches to the same task and
+recommends the least-complex one that satisfies the real operating
+requirements — or declines to recommend anything, when the evidence does not
+support a choice.
 
-## What is already built
-The `frontend/` directory is a complete dependency-free frontend prototype that can be hosted directly on Vercel or any static host.
+**Live:** https://simply-wins.vercel.app
 
-Pages:
-- `index.html` — product thesis and overview
-- `benchmarks.html` — searchable/filterable benchmark library
-- `benchmark.html?problem=...` — interactive benchmark explorer
-- `methodology.html` — decision standard
+## The rule that governs everything
 
-The benchmark detail page lets the user change:
-- minimum accuracy
-- maximum latency
-- monthly volume
-- auditability requirement
+> No value may influence a SimplestWins recommendation unless its provenance
+> state is `MEASURED`. A benchmark whose method set mixes provenance states
+> cannot produce a final recommendation.
 
-The recommendation, cost projection, scatterplot, and pass/fail table update immediately.
+Section 3.1 of [`PROJECT_STANDARD.md`](PROJECT_STANDARD.md). It is enforced in
+the backend, mirrored in the frontend, and verified in a real browser by CI.
+Illustrative figures are shown for context, visibly separated, and excluded
+from every ranking, tie-break, and Pareto frontier.
 
-## Run locally
-From the project root:
-```bash
-python -m http.server 8000 -d frontend
+## What has actually been measured
+
+One benchmark, two of its four methods, on 1,600 held-out examples:
+
+| Method | Accuracy | Macro F1 | p50 latency | State |
+| --- | --- | --- | --- | --- |
+| Keyword + priority rules | 75.69% | 76.30% | ~0.11ms | MEASURED |
+| TF-IDF + logistic regression | 89.50% | 89.56% | ~0.71ms | MEASURED |
+| Small local model | — | — | — | not implemented |
+| Frontier LLM | — | — | — | not implemented |
+
+**Neither measured method clears the problem's own 92% accuracy requirement.**
+The illustrative figures this replaced claimed 91.7% and 94.6% — that both
+passed. They do not. So `support-ticket-routing` reports
+`BENCHMARK_INCOMPLETE`, names no winner, and says "2 of 4 methods measured".
+
+Everything else in the product is still `DEMO` data and labelled as such.
+
+Accuracy and macro F1 reproduce exactly across runs. Latency is measured but
+varies a few percent, being wall-clock timing. Cost is `ESTIMATED` — projected
+from measured latency plus a dated compute rate — and never claimed otherwise.
+
+## Layout
+
 ```
-Then open `http://localhost:8000`.
+frontend/     Static site. No build step. Works with or without the backend.
+backend/      FastAPI service, benchmark runner, datasets, migrations.
+docs/         Product spec, data model, API contract, deployment, QA.
+ci/           Browser gate run by GitHub Actions.
+```
 
-No package install is required for the frontend.
+## Run it
 
-## Deploy frontend on Vercel
-Use `frontend/` as the project root and choose a static deployment/no framework preset. No build command is required.
+```bash
+# Frontend
+python -m http.server 8000 -d frontend
 
-## Important
-All current benchmark numbers are **demo data**. Do not present them as measured results. The project standard requires measured results to include provenance, versions, dataset hashes, and reproducible run metadata.
+# Backend
+cd backend
+python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/alembic upgrade head
+.venv/bin/uvicorn app.main:app --reload
 
-## Before backend work
-Read `PROJECT_STANDARD.md`. It is intentionally strict so Claude Code, Kimi, Codex, or another coding agent does not improvise incompatible architecture or metrics.
+# Benchmarks
+.venv/bin/python -m app.benchmarks.cli run support-ticket-routing --publish
+.venv/bin/python -m app.seed.promote --from v1 --to v2
+```
+
+The frontend falls back to bundled data when no backend is configured, and says
+so on the page. Set `window.SIMPLESTWINS_API_BASE` to point it at an API.
+
+## Checks
+
+```bash
+cd backend && .venv/bin/python -m pytest    # 136 tests
+.venv/bin/ruff check . && .venv/bin/mypy app
+node ci/render-check.mjs                    # from the repo root
+```
+
+CI runs all of it, plus a migration drift check and a benchmark smoke run.
+
+## What is deliberately not built
+
+- **No model provider is connected.** The small-model and frontier-LLM methods
+  have no implementation, which is why no benchmark is complete.
+- **`POST /v1/runs` does not exist.** Running benchmarks on demand costs money
+  once a provider is connected; the endpoint should not exist before
+  authentication and cost controls do.
+- **No rate limiting**, so the API is not ready to be exposed publicly.
+- **The dataset is synthetic.** Its
+  [card](backend/app/benchmarks/datasets/support_ticket_routing/DATASET.md)
+  records five material limitations. Replacing it with a real, licensed corpus
+  is the most valuable next step.
+
+## Documents
+
+- [`PROJECT_STANDARD.md`](PROJECT_STANDARD.md) — the constitution
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — phase status
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — how to deploy each piece
+- [`backend/app/benchmarks/README.md`](backend/app/benchmarks/README.md) — how measurement works
+- [`CHANGELOG.md`](CHANGELOG.md)

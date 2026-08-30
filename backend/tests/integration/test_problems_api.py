@@ -182,3 +182,15 @@ def test_openapi_document_is_served(client: TestClient) -> None:
     assert "/v1/problems" in paths
     assert "/v1/problems/{slug}" in paths
     assert "/v1/problems/{slug}/recommend" in paths
+
+
+def test_reported_api_version_matches_the_package(client: TestClient) -> None:
+    """A served version string that drifts from the package is a small lie the
+    next person has to debug."""
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    expected = tomllib.load(pyproject.open("rb"))["project"]["version"]
+
+    assert client.get("/health").json()["api_version"] == expected

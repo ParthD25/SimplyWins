@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 — Deployable backend, enforced QA
+- Added `backend/Dockerfile` and `docs/DEPLOYMENT.md`. The image installs only
+  the API's dependencies — the benchmark runner's scikit-learn stack is never
+  imported by the service — and runs `alembic upgrade head` before starting, as
+  a non-root user, with a health check against `/health`.
+  **Verified by installing the core dependency set into a clean environment and
+  serving live requests from it; not built, since no Docker daemon was
+  available.**
+- The CI browser gate now exercises the interactions that used to be a manual
+  QA list: home links resolve, search and category filters narrow the library,
+  every benchmark URL loads, sliders change the stated requirements, volume
+  moves the projected cost, the auditability toggle changes which methods
+  qualify, chart and table agree on method count, the chart's table fallback
+  matches, and keyboard focus reaches navigation, controls and chart points.
+- **The gate was checked against a deliberately weakened evidence rule** and
+  failed with four errors and a non-zero exit, so it is not passing vacuously.
+- `docs/QA_CHECKLIST.md` is now fully ticked, and every item is machine-checked
+  rather than asserted.
+- `/health` reported an API version that had drifted from the package version.
+  Fixed, and a test now holds the two together.
+- Root `README.md` rewritten around what has actually been measured, including
+  that neither measured method clears its problem's own requirement.
+- `docs/IMPLEMENTATION_PLAN.md` marks real phase status instead of describing
+  Phase 2 as upcoming.
+- 136 tests pass.
+
 ## 0.5.0 — Frontend talks to the backend, and migrations
 - **Phase 5: the frontend now consumes `/v1`.** `frontend/assets/api.js` loads
   problems from the API when one is configured and reachable; the backend is

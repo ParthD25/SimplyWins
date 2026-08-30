@@ -68,6 +68,133 @@ for (const path of PAGES) {
   }
 }
 
+// --- Interaction checks -----------------------------------------------------
+// These were previously a manual QA list. Anything a human had to click to
+// confirm is worth a machine clicking on every push.
+
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle' });
+
+  // Home links must actually resolve, not merely exist.
+  const hrefs = await page.$$eval('a[href$=".html"], a[href^="benchmark"]', (as) =>
+    [...new Set(as.map((a) => a.getAttribute('href')))]);
+  for (const href of hrefs) {
+    const response = await page.request.get(`http://127.0.0.1:${PORT}/${href.replace(/^\//, '')}`);
+    check(response.ok(), `home link ${href} -> HTTP ${response.status()}`);
+  }
+  await page.close();
+}
+
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(`http://127.0.0.1:${PORT}/benchmarks.html`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(200);
+
+  const total = await page.$$eval('.problem-card', (c) => c.length);
+  check(total > 0, 'library renders no problem cards');
+
+  // Search narrows the list.
+  await page.fill('[data-search]', 'invoice');
+  await page.waitForTimeout(150);
+  const searched = await page.$$eval('.problem-card', (c) => c.length);
+  check(searched > 0 && searched < total, `search did not narrow the list (${searched}/${total})`);
+
+  // Category tabs filter.
+  await page.fill('[data-search]', '');
+  await page.waitForTimeout(100);
+  const tabs = await page.$$('[data-category]');
+  if (tabs.length > 1) {
+    await tabs[1].click();
+    await page.waitForTimeout(150);
+    const filtered = await page.$$eval('.problem-card', (c) => c.length);
+    check(filtered > 0 && filtered <= total, 'category filter returned nothing');
+  }
+
+  // Every benchmark the library links to must load.
+  await tabs[0]?.click();
+  await page.waitForTimeout(150);
+  const links = await page.$$eval('.problem-card', (cards) =>
+    cards.map((c) => c.getAttribute('href')));
+  for (const href of links) {
+    const response = await page.request.get(`http://127.0.0.1:${PORT}/${href}`);
+    check(response.ok(), `benchmark ${href} -> HTTP ${response.status()}`);
+  }
+  await page.close();
+}
+
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(`http://127.0.0.1:${PORT}/benchmark.html?problem=support-ticket-routing`, {
+    waitUntil: 'networkidle',
+  });
+  await page.click('[data-edit]');
+  await page.waitForTimeout(150);
+
+  const chips = () => page.textContent('[data-req-chips]');
+  const table = () => page.textContent('[data-results-body]');
+
+  // Sliders must change what the page states.
+  const beforeAccuracy = await chips();
+  await page.$eval('[data-accuracy]', (el) => {
+    el.value = 99;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  check((await chips()) !== beforeAccuracy, 'accuracy slider did not update the page');
+
+  // Volume must move the projected cost.
+  const beforeCost = await page.textContent('[data-kpis]');
+  await page.$eval('[data-volume]', (el) => {
+    el.value = 1000000;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  check((await page.textContent('[data-kpis]')) !== beforeCost, 'volume did not change cost');
+
+  // Auditability must change which methods qualify.
+  await page.$eval('[data-accuracy]', (el) => {
+    el.value = 80;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  const beforeAudit = await table();
+  await page.$eval('[data-audit]', (el) => {
+    el.checked = !el.checked;
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  check((await table()) !== beforeAudit, 'auditability toggle changed nothing');
+
+  // Chart and table must agree on how many methods exist.
+  const points = await page.$$eval('.data-point', (p) => p.length);
+  const rows = await page.$$eval('[data-results-body] tr', (r) => r.length);
+  check(points === rows, `chart has ${points} points but the table has ${rows} rows`);
+
+  // The chart's table fallback must be reachable and populated.
+  await page.click('[data-view="table"]');
+  await page.waitForTimeout(150);
+  const fallbackRows = await page.$$eval('[data-chart-table] tbody tr', (r) => r.length);
+  check(fallbackRows === rows, 'chart table fallback does not match the comparison table');
+  await page.click('[data-view="chart"]');
+
+  // Keyboard users must reach navigation, controls, and chart points.
+  const reachable = await page.evaluate(() => {
+    const focusable = [...document.querySelectorAll(
+      'a[href], button, input, [tabindex="0"]',
+    )].filter((el) => el.offsetParent !== null);
+    return {
+      nav: focusable.some((el) => el.closest('.sidebar')),
+      controls: focusable.some((el) => el.matches('[data-accuracy], [data-edit]')),
+      points: focusable.some((el) => el.classList.contains('data-point')),
+    };
+  });
+  check(reachable.nav, 'keyboard cannot reach navigation');
+  check(reachable.controls, 'keyboard cannot reach requirement controls');
+  check(reachable.points, 'keyboard cannot reach chart points');
+  await page.close();
+}
+
 // The evidence rule, exercised against the module the site actually ships.
 const page = await browser.newPage();
 await page.goto(`http://127.0.0.1:${PORT}/benchmark.html?problem=support-ticket-routing`, {
@@ -108,4 +235,7 @@ if (failures.length) {
   console.error('FAILED:\n' + failures.map((f) => `  - ${f}`).join('\n'));
   process.exit(1);
 }
-console.log(`OK: ${PAGES.length} pages x 2 widths, evidence rule verified in-browser`);
+console.log(
+  `OK: ${PAGES.length} pages x 2 widths, interactions exercised, ` +
+  'evidence rule verified in-browser',
+);

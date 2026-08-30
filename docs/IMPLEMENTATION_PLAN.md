@@ -19,7 +19,7 @@
 - Mobile navigation and responsive layout
 - Clear demo-data labeling
 
-## Phase 2 — Backend foundation
+## Phase 2 — Backend foundation (complete)
 1. Create FastAPI app.
 2. Add Pydantic schemas matching `BACKEND_CONTRACT.md`.
 3. Implement recommendation domain function with unit tests.
@@ -28,7 +28,7 @@
 6. Add `/v1/problems` and `/v1/problems/{slug}`.
 7. Seed the six problem definitions from versioned YAML/JSON files.
 
-## Phase 3 — Benchmark runner
+## Phase 3 — Benchmark runner (partly complete)
 Create a runner interface:
 ```python
 class BenchmarkMethod(Protocol):
@@ -39,13 +39,23 @@ class BenchmarkMethod(Protocol):
 
 Each task gets deterministic evaluation logic. The runner writes immutable run metadata and raw outputs before aggregation.
 
-First measured benchmark to implement: **Support Ticket Routing** because it is cheap and demonstrates rules vs traditional ML vs LLM clearly.
+First measured benchmark: **Support Ticket Routing**. Done, with two of four
+methods measured:
 
-Suggested methods:
-- keyword routing rules
-- TF-IDF + Logistic Regression
-- small local classifier/transformer
-- frontier LLM classification prompt
+| Method | Status | Accuracy | p50 |
+| --- | --- | --- | --- |
+| keyword routing rules | MEASURED | 75.69% | ~0.11ms |
+| TF-IDF + logistic regression | MEASURED | 89.50% | ~0.71ms |
+| small local classifier | not implemented | — | — |
+| frontier LLM prompt | not implemented | — | — |
+
+The last two need a model provider, which is unconnected by choice. Until they
+are measured the evidence rule (section 3.1 of `PROJECT_STANDARD.md`) declines
+to recommend anything for this problem, and the UI says so.
+
+Worth recording: **neither measured method clears the problem's own 92%
+accuracy requirement.** The demo figures claimed 91.7% and 94.6%, i.e. that
+both passed. Measuring said otherwise.
 
 ## Phase 4 — Document benchmark
 Second measured benchmark: **Invoice Field Extraction**.
@@ -56,20 +66,24 @@ Second measured benchmark: **Invoice Field Extraction**.
 - small VLM
 - frontier multimodal LLM
 
-## Phase 5 — Frontend/API integration
-- Replace local `assets/data.js` with `/v1` fetches.
-- Keep local demo fallback for offline portfolio viewing.
-- Backend recommendation becomes authoritative.
-- Add run provenance drawer.
+## Phase 5 — Frontend/API integration (complete)
+- `frontend/assets/api.js` fetches from `/v1` when a backend is configured.
+- The bundled `data.js` remains the offline fallback, and the page says which
+  source it used rather than falling back silently.
+- The backend is authoritative when reachable.
+- Run provenance reaches the API (`run_id`, dataset checksum, sample count);
+  a dedicated drawer for it is still outstanding.
 
-## Phase 6 — Public portfolio release
-- Vercel frontend
-- backend on Render/Railway/Fly.io or compatible service
-- Postgres managed database
-- rate limits
-- public benchmark results read-only
-- GitHub Actions CI
-- README with architecture and measured findings
+## Phase 6 — Public portfolio release (partly complete)
+- Vercel frontend — **live** at https://simply-wins.vercel.app
+- GitHub Actions CI — **done**: lint, format, strict types, tests, migration
+  drift check, benchmark smoke run, and a browser gate that verifies the
+  evidence rule
+- Container image and deployment guide — **done** (`backend/Dockerfile`,
+  `docs/DEPLOYMENT.md`); not yet built or hosted anywhere
+- Backend hosting and managed Postgres — outstanding, needs an account
+- Rate limits — outstanding, and required by section 11 before a public API
+- README with architecture and measured findings — **done**
 
 ## Phase 7 — Expansion
 Only after the first two benchmarks are genuinely measured:
