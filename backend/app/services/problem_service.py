@@ -24,6 +24,11 @@ from app.seed.loader import DEFAULT_PROFILE_NAME
 
 
 def _to_summary(problem: ProblemModel) -> ProblemSummary:
+    measured = sum(
+        1
+        for method in problem.methods
+        if method.result is not None and method.result.result_state == DataState.MEASURED
+    )
     return ProblemSummary(
         slug=problem.slug,
         title=problem.title,
@@ -32,6 +37,8 @@ def _to_summary(problem: ProblemModel) -> ProblemSummary:
         decision_question=problem.decision_question,
         status=DataState(problem.status),
         benchmark_definition_version=problem.benchmark_definition_version,
+        measured_count=measured,
+        method_count=len(problem.methods),
     )
 
 

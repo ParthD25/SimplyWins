@@ -26,3 +26,21 @@ When the FastAPI service is ready:
 5. Keep instant local recommendation only as a UX preview when the user adjusts constraints.
 
 Do not change visible metric definitions without updating `../PROJECT_STANDARD.md`.
+
+## Connecting to the backend
+
+The site works with no backend: it falls back to the bundled `assets/data.js`
+so the static deployment renders on its own. To point it at a running API, set
+the base URL before the module scripts load:
+
+```html
+<script>window.SIMPLESTWINS_API_BASE = 'https://api.example.com';</script>
+```
+
+When the backend answers, it is authoritative — it owns the seed and the
+decision rule. When it is configured but unreachable, or not configured at all,
+the page says so in a visible note rather than silently showing bundled numbers
+as though they came from the service.
+
+The backend must allow the site's origin; set `SIMPLESTWINS_CORS_ORIGINS` on
+the API to a comma-separated list.

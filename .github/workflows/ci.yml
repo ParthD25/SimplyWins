@@ -36,6 +36,15 @@ jobs:
       - name: Types
         run: mypy app
 
+      - name: Migrations match models
+        # A model change without a migration reaches development but never
+        # production; this is what catches it.
+        run: |
+          alembic upgrade head
+          alembic check
+        env:
+          SIMPLESTWINS_DATABASE_URL: sqlite+pysqlite:///./ci.db
+
       - name: Tests
         run: pytest -q
 

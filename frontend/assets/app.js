@@ -1,4 +1,5 @@
-import { benchmarkProblems, getProblem } from './data.js';
+import { benchmarkProblems } from './data.js';
+import { loadProblem, loadProblems, SOURCE, isConfigured } from './api.js';
 
 export function methodMeetsRequirements(method, requirements) {
   return method.accuracy >= requirements.minAccuracy &&
@@ -88,9 +89,16 @@ function problemIcon(category) {
   return icons[category] ?? '•';
 }
 
-export function renderProblemCards(container, problems = benchmarkProblems) {
+export function renderProblemCards(container, problems = activeProblems) {
   container.innerHTML = problems.map((problem) => {
-    const recommendation = getRecommendation(problem.results, problem.requirements);
+    // A summary carries its counts directly; a bundled problem computes them.
+    const recommendation = problem.results.length
+      ? getRecommendation(problem.results, problem.requirements)
+      : {
+          winner: null,
+          measuredCount: problem.measuredCount ?? 0,
+          methodCount: problem.methodCount ?? 0,
+        };
     return `<a class="problem-card" href="benchmark.html?problem=${problem.slug}">
       <div class="problem-card-top"><span class="category-icon">${problemIcon(problem.category)}</span><span class="status-chip status-demo">Demo results</span></div>
       <div><div class="problem-category">${problem.category}</div><h3>${problem.title}</h3><p>${problem.description}</p></div>
@@ -101,18 +109,42 @@ export function renderProblemCards(container, problems = benchmarkProblems) {
   }).join('');
 }
 
-export function setupLibrary() {
+let activeProblems = benchmarkProblems;
+
+/* Says where the numbers came from. A visitor reading them deserves to know
+   whether the backend served them or the page fell back to its bundled copy. */
+function renderSourceNote(problems) {
+  const host = document.querySelector('[data-source-note]');
+  if (!host) return;
+  const bundled = problems.some((problem) => problem.source === SOURCE.BUNDLED);
+  if (!bundled) {
+    host.hidden = true;
+    return;
+  }
+  host.hidden = false;
+  host.textContent = isConfigured()
+    ? 'Backend unreachable — showing the bundled copy of the benchmark data.'
+    : 'Static preview: showing bundled benchmark data. No backend is configured.';
+}
+
+export async function setupLibrary() {
+  activeProblems = await loadProblems();
+  renderSourceNote(activeProblems);
+  setupLibraryWith(activeProblems);
+}
+
+function setupLibraryWith(problems) {
   const grid = document.querySelector('[data-problem-grid]');
   const input = document.querySelector('[data-search]');
   const tabs = [...document.querySelectorAll('[data-category]')];
   if (!grid || !input) return;
   // A ?category= link (from the benchmark page rail) preselects that filter.
   const requested = new URLSearchParams(location.search).get('category');
-  const known = [...new Set(benchmarkProblems.map((problem) => problem.category))];
+  const known = [...new Set(problems.map((problem) => problem.category))];
   let category = known.includes(requested) ? requested : 'All';
   const update = () => {
     const query = input.value.toLowerCase().trim();
-    const filtered = benchmarkProblems.filter((problem) => (category === 'All' || problem.category === category) && (!query || `${problem.title} ${problem.description} ${problem.category}`.toLowerCase().includes(query)));
+    const filtered = problems.filter((problem) => (category === 'All' || problem.category === category) && (!query || `${problem.title} ${problem.description} ${problem.category}`.toLowerCase().includes(query)));
     renderProblemCards(grid, filtered);
     const count = document.querySelector('[data-result-count]');
     if (count) count.textContent = filtered.length;
@@ -143,7 +175,8 @@ const METHOD_COLORS = {
    print "$0.00" for a figure that is not zero. */
 const money = (value) => {
   if (value === 0) return '$0.00';
-  if (value < 0.01) return `$${value.toPrecision(2)}`;
+  // Number() trims the trailing zero toPrecision leaves on e.g. 0.0000010.
+  if (value < 0.01) return `$${Number(value.toPrecision(2))}`;
   return `$${value.toFixed(2)}`;
 };
 
@@ -306,7 +339,7 @@ function renderRail(problem) {
   const categories = document.querySelector('[data-categories]');
   if (categories) {
     const counts = new Map();
-    benchmarkProblems.forEach((entry) => counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1));
+    activeProblems.forEach((entry) => counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1));
     categories.innerHTML = [...counts.entries()].map(([category, count]) => `
       <a class="rail-item" href="benchmarks.html?category=${encodeURIComponent(category)}">
         <span class="rail-icon" aria-hidden="true">${problemIcon(category)}</span>
@@ -316,11 +349,17 @@ function renderRail(problem) {
 
   const picks = document.querySelector('[data-top-picks]');
   if (picks) {
-    picks.innerHTML = benchmarkProblems
+    picks.innerHTML = activeProblems
       .filter((entry) => entry.slug !== problem.slug)
       .slice(0, 3)
       .map((entry) => {
-        const pick = getRecommendation(entry.results, entry.requirements);
+        const pick = entry.results.length
+          ? getRecommendation(entry.results, entry.requirements)
+          : {
+              winner: null,
+              measuredCount: entry.measuredCount ?? 0,
+              methodCount: entry.methodCount ?? 0,
+            };
         const detail = pick.winner
           ? `→ <span class="rail-pick">${pick.winner.shortName}</span>`
           : `<span class="rail-incomplete">${pick.measuredCount} of ${pick.methodCount} measured</span>`;
@@ -332,9 +371,11 @@ function renderRail(problem) {
   }
 }
 
-export function setupBenchmarkPage() {
+export async function setupBenchmarkPage() {
   const params = new URLSearchParams(location.search);
-  const problem = getProblem(params.get('problem') || 'invoice-field-extraction');
+  const problem = await loadProblem(params.get('problem') || 'invoice-field-extraction');
+  activeProblems = await loadProblems();
+  renderSourceNote([problem]);
   let requirements = structuredClone(problem.requirements);
 
   document.title = `${problem.title} — SimplestWins`;

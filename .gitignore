@@ -17,3 +17,6 @@ coverage/
 
 # Benchmark working output; published runs live in backend/benchmarks/published/
 backend/runs/
+
+# Alembic scratch database used by the migration drift check
+backend/ci.db

@@ -161,3 +161,7 @@ a.rail-item:hover strong{color:var(--blue)}
 .chart-legend-col span.legend-demo b{color:#98a2b3;font-weight:500}
 .chart-legend-col em.legend-note{color:#98a2b3;font-weight:600}
 .card-incomplete,.rail-incomplete{color:#98643f;font-weight:650}
+/* Where the numbers came from. Shown only when the page fell back to its
+   bundled copy, so a reader is never left guessing. */
+.source-note{margin:0;padding:9px 13px;font-size:12px;line-height:1.5;color:#5b6472;background:#f4f6fa;border:1px solid var(--line);border-left:3px solid #b9c2d0;border-radius:9px}
+.source-note[hidden]{display:none}

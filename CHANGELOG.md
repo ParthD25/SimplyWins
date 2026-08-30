@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 — Frontend talks to the backend, and migrations
+- **Phase 5: the frontend now consumes `/v1`.** `frontend/assets/api.js` loads
+  problems from the API when one is configured and reachable; the backend is
+  authoritative because it owns the seed and the decision rule.
+- **The fallback is announced, never silent.** With no backend configured, or
+  one that is unreachable, the page renders the bundled `data.js` and says so
+  in a visible note — distinguishing "static preview" from "backend
+  unreachable". A visitor is never shown bundled numbers as though the service
+  had served them.
+- `/v1/problems` summaries now carry `measured_count` and `method_count`, so a
+  listing shows evidence progress without fetching every problem in full. That
+  took the benchmark page from seven requests to two.
+- Added Alembic, wired to the same `SIMPLESTWINS_DATABASE_URL` the app uses so
+  a migration cannot run against a different database than the service. Batch
+  mode is on, since SQLite cannot `ALTER` most columns.
+- Four migration tests: migrations apply, reverse, pass `alembic check`, and
+  produce a schema identical to `create_all`. CI runs the drift check, so a
+  model change without a migration fails there rather than surfacing in
+  production as a missing column.
+- 135 tests pass.
+
 ## 0.5.0 — Measured results reach the API, and CI
 - Added `app/seed/promote.py`: measured results reach the served seed by a
   reproducible command rather than hand-edited JSON. `support-ticket-routing`

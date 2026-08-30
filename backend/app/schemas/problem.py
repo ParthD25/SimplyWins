@@ -77,7 +77,12 @@ class MethodPayload(ApiSchema):
 
 
 class ProblemSummary(ApiSchema):
-    """Listing shape for /v1/problems. Omits methods to keep the list light."""
+    """Listing shape for /v1/problems.
+
+    Omits the methods themselves but carries the evidence counts, so a listing
+    can show how far a benchmark has got without fetching every problem in
+    full — the difference between one request and one per problem.
+    """
 
     slug: str
     title: str
@@ -86,6 +91,8 @@ class ProblemSummary(ApiSchema):
     decision_question: str
     status: DataState
     benchmark_definition_version: str
+    measured_count: int = Field(description="Methods carrying a MEASURED result.")
+    method_count: int = Field(description="Methods in the declared comparison set.")
 
 
 class ProblemDetail(ProblemSummary):

@@ -49,7 +49,22 @@ def test_problem_summary_matches_documented_shape(client: TestClient) -> None:
         "decision_question",
         "status",
         "benchmark_definition_version",
+        "measured_count",
+        "method_count",
     }
+
+
+def test_listing_carries_evidence_counts(client: TestClient) -> None:
+    """So a listing can show how far each benchmark has got without fetching
+    every problem in full."""
+    body = client.get("/v1/problems").json()
+    by_slug = {problem["slug"]: problem for problem in body["problems"]}
+
+    assert by_slug["support-ticket-routing"]["measured_count"] == 2
+    assert by_slug["support-ticket-routing"]["method_count"] == 4
+    assert by_slug["form-validation"]["measured_count"] == 0
+    for problem in body["problems"]:
+        assert problem["measured_count"] <= problem["method_count"]
 
 
 def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
@@ -65,6 +80,8 @@ def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
         "decision_question",
         "status",
         "benchmark_definition_version",
+        "measured_count",
+        "method_count",
         "rationale",
         "dataset",
         "default_requirements",
