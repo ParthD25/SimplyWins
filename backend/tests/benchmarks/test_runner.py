@@ -10,13 +10,13 @@ import pytest
 from app.benchmarks.evaluation import METRIC_DEFINITION_VERSION
 from app.benchmarks.runner import load_dataset, publish_run, run_method
 
-SLUG = "support-ticket-routing"
+SLUG = "spam-detection"
 
 
 @pytest.fixture(scope="module")
 def rules_run(tmp_path_factory: pytest.TempPathFactory):
     root = tmp_path_factory.mktemp("runs")
-    return run_method(SLUG, "ticket-rules", runs_root=root), root
+    return run_method(SLUG, "rules", runs_root=root), root
 
 
 def test_dataset_loads_with_disjoint_splits() -> None:
@@ -29,7 +29,7 @@ def test_dataset_loads_with_disjoint_splits() -> None:
 
 def test_unknown_problem_is_rejected() -> None:
     with pytest.raises(KeyError):
-        run_method("no-such-problem", "ticket-rules")
+        run_method("no-such-problem", "rules")
 
 
 def test_unknown_method_is_rejected() -> None:
@@ -121,8 +121,8 @@ def test_every_prediction_row_carries_its_latency(rules_run) -> None:
 def test_quality_metrics_reproduce_exactly(tmp_path: Path) -> None:
     """Accuracy must not drift between runs. Latency is excluded on purpose —
     it is wall-clock timing and varies by a few percent."""
-    first = run_method(SLUG, "ticket-rules", runs_root=tmp_path / "a")
-    second = run_method(SLUG, "ticket-rules", runs_root=tmp_path / "b")
+    first = run_method(SLUG, "rules", runs_root=tmp_path / "a")
+    second = run_method(SLUG, "rules", runs_root=tmp_path / "b")
 
     assert first.accuracy == second.accuracy
     assert first.macro_f1 == second.macro_f1

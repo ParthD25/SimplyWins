@@ -24,9 +24,9 @@ def test_seeding_is_idempotent(temp_database: None) -> None:
         session.commit()
         total = repository.count()
 
-    assert first == 6
+    assert first == 3
     assert second == 0
-    assert total == 6
+    assert total == 3
 
 
 def test_seeded_problem_round_trips_through_the_repository(temp_database: None) -> None:
@@ -36,9 +36,9 @@ def test_seeded_problem_round_trips_through_the_repository(temp_database: None) 
         seed_problems(repository, get_settings().seed_version)
         session.commit()
 
-        problem = repository.get_by_slug("form-validation")
+        problem = repository.get_by_slug("spam-detection")
         assert problem is not None
-        assert problem.title == "Form Validation"
+        assert problem.title == "Spam Detection"
         assert len(problem.methods) == 4
         assert len(problem.dataset_versions) == 1
         assert len(problem.requirement_profiles) == 1

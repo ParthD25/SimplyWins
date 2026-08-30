@@ -39,7 +39,7 @@ Most of the above is now checked by CI rather than by hand:
 
 - `backend/tests/` — decision rule, evidence rule, error envelope, run
   provenance, score recomputation from the raw artifact, dataset integrity,
-  migration drift (153 tests)
+  migration drift (176 tests)
 - `ci/render-check.mjs` — five pages at two widths, asserting no console
   errors, no failed requests and no page-level horizontal overflow; then
   exercising the interactions a human used to click through (home links resolve,

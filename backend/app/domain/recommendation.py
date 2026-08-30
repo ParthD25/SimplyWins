@@ -38,6 +38,14 @@ class DataState(StrEnum):
     DEMO = "DEMO"
     MEASURED = "MEASURED"
     ESTIMATED = "ESTIMATED"
+    # The method is part of this benchmark's comparison set but has never been
+    # run, so it has no figures at all. Distinct from DEMO, which carries
+    # illustrative numbers: a NOT_RUN method carries none, and its placeholder
+    # zeroes must never be read as a result. It is still counted in the method
+    # total, because the evidence rule turns on whether *every* method has been
+    # measured — an unrun method could displace the current leader, which is
+    # exactly why no winner may be named while one exists.
+    NOT_RUN = "NOT_RUN"
 
 
 class RecommendationStatus(StrEnum):

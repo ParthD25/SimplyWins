@@ -13,6 +13,24 @@ class DataState(StrEnum):
     DEMO = "DEMO"
     MEASURED = "MEASURED"
     ESTIMATED = "ESTIMATED"
+    # Listed in the comparison set but never run, so it carries no figures at
+    # all. Distinct from DEMO, which carries illustrative ones. Still counted
+    # in the method total: the evidence rule turns on every method having been
+    # measured, and an unrun method could displace the current leader.
+    NOT_RUN = "NOT_RUN"
+
+
+class ProblemStatus(StrEnum):
+    """How far a benchmark problem has got.
+
+    Separate from ``DataState`` because a problem's progress is not a figure's
+    provenance: MIXED is meaningless for one number and exactly right for a
+    comparison set where some methods have run and others have not.
+    """
+
+    MEASURED = "MEASURED"
+    PARTIAL = "PARTIAL"
+    NOT_RUN = "NOT_RUN"
 
 
 class MethodClass(StrEnum):

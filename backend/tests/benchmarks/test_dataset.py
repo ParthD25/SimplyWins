@@ -1,103 +1,100 @@
-"""Dataset integrity.
+"""The real corpora must stay real, balanced, and uncontaminated.
 
-The template-disjoint guarantee is the reason the published accuracy means
-anything, so it is asserted rather than trusted.
+These read the committed dataset files rather than rebuilding them, so they
+fail if a file is edited by hand — which is the failure mode that matters,
+since the numbers on the site are computed from these bytes.
 """
 
 from __future__ import annotations
 
-import collections
 import hashlib
 import json
+from collections import Counter
+from pathlib import Path
 
 import pytest
 
-from app.benchmarks.datasets.support_ticket_routing import generate as dataset
+from app.benchmarks.datasets.cfpb_complaints import build as cfpb
+from app.benchmarks.datasets.sms_spam import build as spam
+from app.benchmarks.datasets.sst2_sentiment import build as sst2
+
+BUILDERS = pytest.mark.parametrize("module", [cfpb, spam, sst2], ids=lambda m: m.DATASET_NAME)
 
 
-@pytest.fixture(scope="module")
-def rows() -> list[dict]:
-    return [
-        json.loads(line) for line in dataset.DATASET_PATH.read_text(encoding="utf-8").splitlines()
-    ]
+def _rows(module: object) -> list[dict[str, str]]:
+    path: Path = module.DATASET_PATH  # type: ignore[attr-defined]
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
-def test_dataset_file_is_present_and_complete(rows: list[dict]) -> None:
-    assert len(rows) == dataset.TOTAL_EXAMPLES
+@BUILDERS
+def test_dataset_file_is_present_and_non_trivial(module: object) -> None:
+    rows = _rows(module)
+    assert len(rows) > 500
 
 
-def test_generation_is_deterministic() -> None:
-    """Same seed, same dataset — otherwise the checksum in every run record is
-    meaningless."""
-    first = dataset.generate()
-    second = dataset.generate()
-
-    assert [item.text for item in first] == [item.text for item in second]
-    assert [item.split for item in first] == [item.split for item in second]
-
-
-def test_on_disk_file_matches_the_generator() -> None:
-    expected = dataset.generate()
-    payload = dataset.DATASET_PATH.read_text(encoding="utf-8")
-    actual = [json.loads(line) for line in payload.splitlines()]
-
-    assert [item.example_id for item in expected] == [row["example_id"] for row in actual]
-    assert [item.text for item in expected] == [row["text"] for row in actual]
+@BUILDERS
+def test_every_row_is_well_formed(module: object) -> None:
+    for row in _rows(module):
+        assert row["split"] in {"train", "test"}
+        assert row["text"].strip()
+        assert row["label"]
+        assert row["example_id"]
 
 
-def test_checksum_is_stable(rows: list[dict]) -> None:
-    payload = dataset.DATASET_PATH.read_text(encoding="utf-8")
-    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-    assert len(digest) == 64
-    # Recomputing must give the same answer, which is what run records rely on.
-    assert digest == hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def test_splits_share_no_template(rows: list[dict]) -> None:
-    """The guarantee that makes the accuracy figure a generalisation claim."""
-    train = {row["template_id"] for row in rows if row["split"] == "train"}
-    test = {row["template_id"] for row in rows if row["split"] == "test"}
-
-    assert train and test
-    assert train & test == set()
+@BUILDERS
+def test_no_text_appears_in_both_splits(module: object) -> None:
+    """Contamination lets a method score by memorising rather than generalising."""
+    rows = _rows(module)
+    train = {r["text"].strip().lower() for r in rows if r["split"] == "train"}
+    test = {r["text"].strip().lower() for r in rows if r["split"] == "test"}
+    assert not (train & test)
 
 
-def test_every_class_appears_in_both_splits(rows: list[dict]) -> None:
-    for split in ("train", "test"):
-        labels = {row["label"] for row in rows if row["split"] == split}
-        assert labels == set(dataset.LABELS), split
+@BUILDERS
+def test_both_splits_carry_every_label(module: object) -> None:
+    rows = _rows(module)
+    train = {r["label"] for r in rows if r["split"] == "train"}
+    test = {r["label"] for r in rows if r["split"] == "test"}
+    assert train == test
+    assert len(train) >= 2
 
 
-def test_classes_are_balanced(rows: list[dict]) -> None:
-    counts = collections.Counter(row["label"] for row in rows)
+@BUILDERS
+def test_split_is_stratified(module: object) -> None:
+    """Each label's train share should sit near the global train fraction.
 
-    assert len(set(counts.values())) == 1, counts
-
-
-def test_every_label_is_known(rows: list[dict]) -> None:
-    assert {row["label"] for row in rows} == set(dataset.LABELS)
-
-
-def test_hard_cases_are_a_meaningful_share(rows: list[dict]) -> None:
-    """Without hard cases keyword matching would score near 100% and the
-    comparison would say nothing."""
-    hard = sum(1 for row in rows if row["difficulty"] != "plain")
-
-    assert hard / len(rows) > 0.30
-
-
-def test_no_example_is_empty(rows: list[dict]) -> None:
-    assert all(row["text"].strip() for row in rows)
+    A split taken in file order drifts badly here, because public corpora are
+    often grouped by label or collection date.
+    """
+    rows = _rows(module)
+    fraction = module.TRAIN_FRACTION  # type: ignore[attr-defined]
+    per_label: dict[str, Counter[str]] = {}
+    for row in rows:
+        per_label.setdefault(row["label"], Counter())[row["split"]] += 1
+    for label, counts in per_label.items():
+        total = counts["train"] + counts["test"]
+        assert abs(counts["train"] / total - fraction) < 0.05, label
 
 
-def test_example_ids_are_unique(rows: list[dict]) -> None:
-    ids = [row["example_id"] for row in rows]
+@BUILDERS
+def test_checksum_matches_the_dataset_card(module: object) -> None:
+    """The card is generated, so a hand-edited corpus is caught here."""
+    path: Path = module.DATASET_PATH  # type: ignore[attr-defined]
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    card = (path.parent.parent / "DATASET.md").read_text(encoding="utf-8")
+    assert digest in card
 
-    assert len(set(ids)) == len(ids)
+
+@BUILDERS
+def test_card_records_a_real_public_source(module: object) -> None:
+    source = module.SOURCE  # type: ignore[attr-defined]
+    assert source.url.startswith("https://")
+    assert source.license_url.startswith("https://")
+    # The point of the rewrite: nothing here is generated by this repository.
+    assert "synthetic" not in source.name.lower()
 
 
-def test_each_class_has_enough_templates_to_generalise() -> None:
-    """A small pool was what made an earlier version measure memorisation."""
-    for label, templates in dataset.TEMPLATES.items():
-        assert len(templates) >= 30, label
+def test_cfpb_queues_are_balanced() -> None:
+    """Unbalanced queues let a method score by always guessing the biggest."""
+    counts = Counter(r["label"] for r in _rows(cfpb))
+    assert len(set(counts.values())) == 1

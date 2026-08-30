@@ -24,3 +24,6 @@ backend/ci.db
 
 # setuptools build artifacts
 build/
+
+# Downloaded corpora cache; datasets are rebuilt from their public sources
+backend/app/benchmarks/datasets/.cache/

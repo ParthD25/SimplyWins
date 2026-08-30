@@ -47,7 +47,7 @@
           <h1 data-title></h1>
           <p data-description></p>
         </div>
-        <span class="state-pill" title="Illustrative figures, not measured results">Demo data</span>
+        <span class="state-pill" data-hero-chip></span>
       </div>
     </header>
 
@@ -103,9 +103,17 @@
       </div>
     </section>
 
+    <section class="panel" data-floors-panel hidden>
+      <div class="panel-bar">
+        <h2>What these numbers have to beat</h2>
+        <p class="panel-note">An accuracy figure is only evidence if the experiment could have produced a low one. Every measured result is checked against the floors below before it is published.</p>
+      </div>
+      <div class="floors" data-floors></div>
+    </section>
+
     <section class="evidence-strip">
       <div><span>Dataset</span><strong data-dataset></strong><small data-dataset-size></small></div>
-      <div><span>Status</span><strong>Illustrative frontend benchmark</strong><small>Replace with measured runs from the backend.</small></div>
+      <div><span>Provenance</span><strong data-dataset-license>—</strong><small data-dataset-provenance></small></div>
       <div><span>Decision rationale</span><strong data-rationale></strong></div>
     </section>
   </div>
@@ -125,7 +133,7 @@
     </div>
     <div class="rail-card">
       <div class="rail-head"><h2>Data state</h2></div>
-      <p class="rail-note"><strong>All figures are demo data.</strong> They illustrate how the decision rule behaves and are not measured benchmark results. Measured runs arrive with the Python benchmark runner.</p>
+      <p class="rail-note" data-rail-state></p>
     </div>
   </aside>
 </div>

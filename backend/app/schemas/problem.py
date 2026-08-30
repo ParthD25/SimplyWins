@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from app.schemas.common import ApiSchema, DataState, MethodClass
+from app.schemas.common import ApiSchema, DataState, MethodClass, ProblemStatus
 
 
 class RequirementsPayload(ApiSchema):
@@ -27,19 +27,61 @@ class DatasetPayload(ApiSchema):
 
     name: str
     version: str
-    sample_count_label: str
+    sample_count_label: str | None = None
     sha256: str | None = None
     license: str | None = None
     source_url: str | None = None
-    provenance_notes: str
+    provenance_notes: str | None = None
+
+
+class TermProvenancePayload(ApiSchema):
+    """How a keyword method's vocabulary divides against its training corpus.
+
+    Published because a rules baseline whose every term is drawn from the data
+    it is scored on is a fitted model wearing the word "rules". Comparing the
+    two halves is what caught this benchmark measuring its own author when the
+    corpus was synthetic.
+    """
+
+    total_terms: int
+    attested_terms: int
+    unattested_terms: int
+    attested_fraction: float
+    accuracy_all_terms: float
+    accuracy_attested_only: float
+    accuracy_unattested_only: float
+
+
+class LeakageAuditPayload(ApiSchema):
+    """Whether a result could have come out low.
+
+    An accuracy figure is only evidence if the experiment was capable of
+    producing a bad one, so every measured result carries the floors it had to
+    beat and a contamination check alongside it.
+    """
+
+    majority_label: str
+    majority_baseline_accuracy: float
+    chance_accuracy: float
+    train_size: int
+    test_size: int
+    contaminated_examples: int
+    contamination_rate: float
+    term_provenance: TermProvenancePayload | None = None
+    notes: list[str] = Field(default_factory=list)
 
 
 class ResultPayload(ApiSchema):
-    """One method's measured or illustrative performance on a problem.
+    """One method's performance on a problem, or the absence of one.
 
-    ``cost_state`` is separate from ``result_state`` because cost is projected
-    from measured latency plus a dated rate assumption. A method can therefore
-    be MEASURED on quality while its cost is only ESTIMATED.
+    ``cost_state`` is separate from ``result_state`` because cost is usually
+    projected from measured latency plus a dated rate assumption. A method can
+    therefore be MEASURED on quality while its cost is only ESTIMATED; a hosted
+    model, which reports the tokens it used, is MEASURED on both.
+
+    A ``NOT_RUN`` result carries zeroes in every numeric field. They are
+    placeholders, never values: the method is listed because it belongs to the
+    comparison set and its absence is what keeps the benchmark incomplete.
     """
 
     result_state: DataState
@@ -50,7 +92,9 @@ class ResultPayload(ApiSchema):
     cost_per_1k: float = Field(ge=0, description="Cost in USD per 1,000 units of work.")
     deterministic: bool
     auditable: bool
-    metric_definition_version: str
+    # Absent for a NOT_RUN method: there is no metric because nothing was
+    # measured. Required in practice for every other state.
+    metric_definition_version: str | None = None
     raw_artifact_uri: str | None = None
     measured_at: str | None = None
     cost_state: DataState = DataState.DEMO
@@ -59,6 +103,10 @@ class ResultPayload(ApiSchema):
     )
     sample_count: int | None = Field(
         default=None, description="Examples the measured result was scored over."
+    )
+    leakage_audit: LeakageAuditPayload | None = Field(
+        default=None,
+        description="Floors and contamination checks the result must be read against.",
     )
 
 
@@ -89,7 +137,7 @@ class ProblemSummary(ApiSchema):
     category: str
     description: str
     decision_question: str
-    status: DataState
+    status: ProblemStatus
     benchmark_definition_version: str
     measured_count: int = Field(description="Methods carrying a MEASURED result.")
     method_count: int = Field(description="Methods in the declared comparison set.")

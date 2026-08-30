@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 API_TITLE = "SimplestWins API"
 # Application release version. The /v1 path prefix is the contract version and
 # changes only on a breaking schema change.
-API_VERSION = "0.7.0"
+API_VERSION = "0.8.0"
 
 
 class HealthResponse(ApiSchema):

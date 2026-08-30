@@ -10,11 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 EXPECTED_SLUGS = {
-    "invoice-field-extraction",
-    "messy-receipt-extraction",
-    "support-ticket-routing",
-    "duplicate-record-detection",
-    "form-validation",
+    "support-request-routing",
+    "spam-detection",
     "sentiment-classification",
 }
 
@@ -60,15 +57,15 @@ def test_listing_carries_evidence_counts(client: TestClient) -> None:
     body = client.get("/v1/problems").json()
     by_slug = {problem["slug"]: problem for problem in body["problems"]}
 
-    assert by_slug["support-ticket-routing"]["measured_count"] == 2
-    assert by_slug["support-ticket-routing"]["method_count"] == 4
-    assert by_slug["form-validation"]["measured_count"] == 0
+    assert by_slug["support-request-routing"]["measured_count"] == 2
+    assert by_slug["support-request-routing"]["method_count"] == 4
+    assert by_slug["spam-detection"]["measured_count"] == 2
     for problem in body["problems"]:
         assert problem["measured_count"] <= problem["method_count"]
 
 
 def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
-    response = client.get("/v1/problems/support-ticket-routing")
+    response = client.get("/v1/problems/support-request-routing")
 
     assert response.status_code == 200
     body = response.json()
@@ -98,7 +95,7 @@ def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
 
 def test_problem_detail_keys_are_snake_case(client: TestClient) -> None:
     """Section 6 of the standard: backend payloads use snake_case."""
-    body = client.get("/v1/problems/support-ticket-routing").json()
+    body = client.get("/v1/problems/support-request-routing").json()
 
     def assert_snake_case(payload: object) -> None:
         if isinstance(payload, dict):
@@ -114,7 +111,7 @@ def test_problem_detail_keys_are_snake_case(client: TestClient) -> None:
 
 
 def test_methods_are_ordered_by_complexity_rank(client: TestClient) -> None:
-    body = client.get("/v1/problems/invoice-field-extraction").json()
+    body = client.get("/v1/problems/spam-detection").json()
 
     ranks = [method["complexity_rank"] for method in body["methods"]]
     assert ranks == sorted(ranks)
@@ -129,7 +126,7 @@ def test_every_result_declares_a_state_the_api_can_be_held_to(
         body = client.get(f"/v1/problems/{slug}").json()
         for method in body["methods"]:
             result = method["result"]
-            assert result["result_state"] in {"DEMO", "MEASURED", "ESTIMATED"}
+            assert result["result_state"] in {"DEMO", "MEASURED", "ESTIMATED", "NOT_RUN"}
             if result["result_state"] == "MEASURED":
                 assert result["run_id"]
                 assert result["raw_artifact_uri"]
@@ -139,21 +136,33 @@ def test_every_result_declares_a_state_the_api_can_be_held_to(
                 assert result["measured_at"] is None
 
 
-def test_support_ticket_routing_serves_its_measured_results(
-    client: TestClient,
-) -> None:
-    """The two methods that were actually run must reach the API as MEASURED."""
-    body = client.get("/v1/problems/support-ticket-routing").json()
+def test_routing_serves_its_real_measured_results(client: TestClient) -> None:
+    """The two methods that were actually run reach the API as MEASURED, with
+    the figures from the real corpus — and the two that were never run reach it
+    as NOT_RUN rather than as illustrative numbers."""
+    body = client.get("/v1/problems/support-request-routing").json()
     by_id = {method["method_id"]: method for method in body["methods"]}
 
-    assert by_id["ticket-rules"]["result"]["result_state"] == "MEASURED"
-    assert by_id["ticket-ml"]["result"]["result_state"] == "MEASURED"
-    assert by_id["ticket-small"]["result"]["result_state"] == "DEMO"
-    assert by_id["ticket-frontier"]["result"]["result_state"] == "DEMO"
-    # The measured figures, not the illustrative ones they replaced.
-    assert by_id["ticket-rules"]["result"]["accuracy"] == pytest.approx(75.69, abs=0.01)
-    assert by_id["ticket-ml"]["result"]["accuracy"] == pytest.approx(89.5, abs=0.01)
+    assert by_id["rules"]["result"]["result_state"] == "MEASURED"
+    assert by_id["ml"]["result"]["result_state"] == "MEASURED"
+    assert by_id["small-model"]["result"]["result_state"] == "NOT_RUN"
+    assert by_id["frontier-llm"]["result"]["result_state"] == "NOT_RUN"
+
+    assert by_id["rules"]["result"]["accuracy"] == pytest.approx(46.43, abs=0.01)
+    assert by_id["ml"]["result"]["accuracy"] == pytest.approx(79.87, abs=0.01)
     assert body["dataset"]["sha256"]
+
+
+def test_measured_results_carry_their_floors(client: TestClient) -> None:
+    """A number the reader cannot compare to chance is not evidence."""
+    body = client.get("/v1/problems/support-request-routing").json()
+    audit = {m["method_id"]: m["result"]["leakage_audit"] for m in body["methods"]}
+
+    assert audit["rules"]["chance_accuracy"] == pytest.approx(14.29, abs=0.01)
+    assert audit["rules"]["contamination_rate"] == 0.0
+    # The rules baseline is genuinely poor on this task; that is the finding.
+    assert audit["rules"]["term_provenance"]["total_terms"] > 0
+    assert audit["small-model"] is None
 
 
 def test_unknown_slug_returns_standard_error_envelope(client: TestClient) -> None:

@@ -2,16 +2,38 @@ import { benchmarkProblems } from './data.js';
 import { loadProblem, loadProblems, SOURCE, isConfigured } from './api.js';
 
 export function methodMeetsRequirements(method, requirements) {
+  /* A method that has never run cannot satisfy anything. Its stored zeroes
+     would otherwise read as instant and free, so a low accuracy bar would let
+     an unrun model outrank every measured one. */
+  if (hasNoResult(method)) return false;
   return method.accuracy >= requirements.minAccuracy &&
     method.latencyMs <= requirements.maxLatencyMs &&
     (!requirements.auditabilityRequired || method.auditable);
 }
 
 /* Only MEASURED figures may shape an outcome — section 3.1 of
-   PROJECT_STANDARD.md. Anything else is display-only. Defaults to DEMO so the
-   rule fails closed when provenance is missing. */
+   PROJECT_STANDARD.md. Everything else is display-only: DEMO carries
+   illustrative numbers, NOT_RUN carries none at all and its zeroes are
+   placeholders. Defaults to DEMO so the rule fails closed when provenance is
+   missing. */
 export function countsAsEvidence(method) {
   return (method.resultState ?? 'DEMO') === 'MEASURED';
+}
+
+/* A method that has never run has no figures. Its zeroes must never be
+   rendered as a result — read literally they are perfect latency at no cost. */
+export function hasNoResult(method) {
+  return (method.resultState ?? 'DEMO') === 'NOT_RUN';
+}
+
+const STATUS_CHIP = {
+  MEASURED: { label: 'Measured', className: 'status-measured' },
+  PARTIAL: { label: 'Partly measured', className: 'status-partial' },
+  NOT_RUN: { label: 'Not run', className: 'status-notrun' },
+};
+
+export function statusChip(status) {
+  return STATUS_CHIP[status] ?? { label: 'Demo results', className: 'status-demo' };
 }
 
 export const RECOMMENDATION_STATUS = {
@@ -100,7 +122,7 @@ export function renderProblemCards(container, problems = activeProblems) {
           methodCount: problem.methodCount ?? 0,
         };
     return `<a class="problem-card" href="benchmark.html?problem=${problem.slug}">
-      <div class="problem-card-top"><span class="category-icon">${problemIcon(problem.category)}</span><span class="status-chip status-demo">Demo results</span></div>
+      <div class="problem-card-top"><span class="category-icon">${problemIcon(problem.category)}</span><span class="status-chip ${statusChip(problem.status).className}">${statusChip(problem.status).label}</span></div>
       <div><div class="problem-category">${problem.category}</div><h3>${problem.title}</h3><p>${problem.description}</p></div>
       <div class="problem-card-bottom">${recommendation.winner
         ? `<span>Recommended: <strong>${recommendation.winner.shortName}</strong></span>`
@@ -136,12 +158,27 @@ export async function setupLibrary() {
 function setupLibraryWith(problems) {
   const grid = document.querySelector('[data-problem-grid]');
   const input = document.querySelector('[data-search]');
-  const tabs = [...document.querySelectorAll('[data-category]')];
   if (!grid || !input) return;
+  const known = [...new Set(problems.map((problem) => problem.category))].sort();
+
+  /* Rendered from the data rather than written into the HTML. Hardcoded tabs
+     drift the moment the problem set changes, and a tab that matches nothing
+     looks like a broken filter rather than an empty category. */
+  const tabStrip = document.querySelector('[data-category-tabs]');
+  if (tabStrip) {
+    tabStrip.innerHTML = ['All', ...known]
+      .map((name, index) =>
+        `<button class="${index === 0 ? 'active' : ''}" data-category="${name}">${name}</button>`)
+      .join('');
+  }
+  const tabs = [...document.querySelectorAll('[data-category]')];
+
   // A ?category= link (from the benchmark page rail) preselects that filter.
   const requested = new URLSearchParams(location.search).get('category');
-  const known = [...new Set(problems.map((problem) => problem.category))];
   let category = known.includes(requested) ? requested : 'All';
+  if (category !== 'All') {
+    tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.category === category));
+  }
   const update = () => {
     const query = input.value.toLowerCase().trim();
     const filtered = problems.filter((problem) => (category === 'All' || problem.category === category) && (!query || `${problem.title} ${problem.description} ${problem.category}`.toLowerCase().includes(query)));
@@ -196,12 +233,16 @@ function renderScatter(problem, requirements, recommendation) {
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
-  const costs = problem.results.map((r) => r.costPer1k);
+  /* Only methods with figures are plotted. An unrun method's zeroes would draw
+     a point at the origin — free and perfectly inaccurate — which is a claim
+     about a measurement nobody took. */
+  const plotted = problem.results.filter((method) => !hasNoResult(method));
+  const costs = plotted.map((r) => r.costPer1k);
   const minCost = 0.01;
   const maxCost = Math.max(...costs, 10) * 2.2;
   // Floor the accuracy axis to a round number below the lowest value on show,
   // so points never sit on the frame.
-  const lowest = Math.min(...problem.results.map((r) => r.accuracy), requirements.minAccuracy) - 3;
+  const lowest = Math.min(...plotted.map((r) => r.accuracy), requirements.minAccuracy) - 3;
   // Pick a tick step that lands on whole numbers, then floor the axis to it,
   // so labels read 90/92/94 rather than 90/92.5/95.
   const span = 100 - lowest;
@@ -220,14 +261,14 @@ function renderScatter(problem, requirements, recommendation) {
     ${xTicks.map((t) => `<line y1="${m.top}" y2="${H - m.bottom}" x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" class="grid-line vertical"/><text x="${x(t).toFixed(1)}" y="${H - m.bottom + 20}" text-anchor="middle" class="axis-label">$${t < 1 ? t.toFixed(2) : t.toFixed(2)}</text>`).join('')}
     <line x1="${m.left}" x2="${W - m.right}" y1="${thresholdY.toFixed(1)}" y2="${thresholdY.toFixed(1)}" class="threshold-line"/>
     <text x="${m.left + 6}" y="${(thresholdY - 7).toFixed(1)}" class="threshold-label">${requirements.minAccuracy}% requirement</text>
-    ${problem.results.map((method) => {
+    ${plotted.map((method) => {
       const passes = methodMeetsRequirements(method, requirements);
       const evidence = countsAsEvidence(method);
       const isWinner = recommendation.winner && method.id === recommendation.winner.id;
       const cx = x(method.costPer1k).toFixed(1);
       const cy = y(method.accuracy).toFixed(1);
       const ring = isWinner ? `<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#15966b" stroke-width="2"/>` : '';
-      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${formatLatency(method.latencyMs)}. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
+      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${formatLatency(method.latencyMs)}. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only \u2014 excluded from the recommendation.'}</title></circle>`;
     }).join('')}
     <text x="${m.left + pw / 2}" y="${H - 8}" text-anchor="middle" class="axis-title">Cost per 1K tasks (USD, log scale)</text>
     <text x="14" y="${m.top + ph / 2}" text-anchor="middle" class="axis-title" transform="rotate(-90 14 ${m.top + ph / 2})">Accuracy (%)</text>
@@ -245,7 +286,11 @@ function renderChartLegend(problem, requirements, recommendation) {
     const marker = evidence
       ? `background:${METHOD_COLORS[method.kind]}`
       : `background:#fff;box-shadow:inset 0 0 0 2px ${METHOD_COLORS[method.kind]}`;
-    return `<span class="${evidence ? '' : 'legend-demo'}"><i style="${marker}"></i><b>${method.shortName}${isWinner ? '<em>Recommended</em>' : ''}${evidence ? '' : '<em class="legend-note">Illustrative</em>'}</b></span>`;
+    const unrun = hasNoResult(method);
+    const qualifier = evidence
+      ? ''
+      : `<em class="legend-note">${unrun ? 'Not run' : 'Illustrative'}</em>`;
+    return `<span class="${evidence ? '' : 'legend-demo'}"><i style="${marker}"></i><b>${method.shortName}${isWinner ? '<em>Recommended</em>' : ''}${qualifier}</b></span>`;
   }).join('');
 }
 
@@ -292,7 +337,7 @@ function renderKpis(problem, requirements, recommendation) {
 
 /* States the evidence position before any numbers are read. Section 3.1
    requires incompleteness to be visible, not merely implied. */
-function renderEvidenceBanner(recommendation) {
+function renderEvidenceBanner(recommendation, methods = []) {
   const host = document.querySelector('[data-evidence-banner]');
   if (!host) return;
   if (recommendation.status !== RECOMMENDATION_STATUS.INCOMPLETE) {
@@ -300,9 +345,12 @@ function renderEvidenceBanner(recommendation) {
     return;
   }
   const { measuredCount, methodCount, bestMeasured } = recommendation;
+  const unrunNames = methods.filter(hasNoResult).map((method) => method.shortName);
   host.hidden = false;
   host.innerHTML = `<strong>Benchmark incomplete — ${measuredCount} of ${methodCount} methods measured.</strong>
-    <p>Illustrative figures are shown for context but are excluded from the ranking, the chart's frontier, and any recommendation. No winner is named until every method has been measured, because an unmeasured method could change the outcome.${bestMeasured ? ` Best measured result so far is <b>${bestMeasured.shortName}</b>, which is not a recommendation.` : ''}</p>`;
+    <p>${unrunNames.length
+      ? `${unrunNames.join(' and ')} ${unrunNames.length === 1 ? 'has' : 'have'} not been run, so ${unrunNames.length === 1 ? 'it carries' : 'they carry'} no figures at all.`
+      : 'Figures that are not measured are shown for context but excluded from the ranking.'} No winner is named until every method has been measured, because an unmeasured method could change the outcome.${bestMeasured ? ` Best measured result so far is <b>${bestMeasured.shortName}</b>, which is not a recommendation.` : ''}</p>`;
 }
 
 function renderRequirementChips(requirements) {
@@ -322,15 +370,110 @@ function renderTable(problem, requirements, recommendation) {
     const passes = methodMeetsRequirements(method, requirements);
     const isWinner = recommendation.winner && method.id === recommendation.winner.id;
     const evidence = countsAsEvidence(method);
-    const rowClass = [isWinner ? 'winner-row' : '', evidence ? '' : 'demo-row'].filter(Boolean).join(' ');
+    const unrun = hasNoResult(method);
+    const rowClass = [
+      isWinner ? 'winner-row' : '',
+      evidence ? '' : 'demo-row',
+      unrun ? 'unrun-row' : '',
+    ].filter(Boolean).join(' ');
+
+    /* An unrun method has no figures. Printing its zeroes would state a
+       measurement that was never taken, so every metric cell is an em dash. */
+    const metrics = unrun
+      ? '<td>—</td><td>—</td><td>—</td>'
+      : `<td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>`;
+    const stateTag = unrun
+      ? '<span class="state-tag state-notrun">Not run</span>'
+      : `<span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span>`;
+    const verdict = unrun
+      ? '<td class="unrun-label">—</td>'
+      : `<td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td>`;
+
     return `<tr class="${rowClass}">
-      <td><div class="method-cell"><span class="method-badge method-${method.kind}">${method.shortName}</span><div><strong>${method.name}</strong><small>${method.notes}</small></div></div></td>
-      <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
-      <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>
+      <td><div class="method-cell"><span class="method-badge method-${method.kind}">${method.shortName}</span><div><strong>${method.name}</strong><small>${unrun ? 'Never run — no measurement exists.' : method.notes}</small></div></div></td>
+      <td>${stateTag}</td>
+      ${metrics}
       <td class="${method.auditable ? 'pass-label' : 'fail-label'}">${method.auditable ? '✓ Yes' : '× No'}</td>
-      <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td>
+      ${verdict}
     </tr>`;
   }).join('');
+}
+
+
+/* The floors panel. This is the project's own failure mode made visible: an
+   earlier version of this benchmark scored a keyword baseline on text its
+   author had written, and the score looked respectable until it was compared
+   against what guessing would have achieved. Publishing the floors beside the
+   figure is what stops a reader taking any accuracy as good news. */
+function renderFloors(problem) {
+  const host = document.querySelector('[data-floors]');
+  const panel = document.querySelector('[data-floors-panel]');
+  if (!host || !panel) return;
+
+  const measured = problem.results.filter((method) => method.audit);
+  if (!measured.length) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+
+  const audit = measured[0].audit;
+  const cards = [
+    {
+      label: 'Uniform chance',
+      value: `${audit.chanceAccuracy.toFixed(1)}%`,
+      note: 'Picking a label at random.',
+    },
+    {
+      label: 'Always the commonest label',
+      value: `${audit.majorityBaselineAccuracy.toFixed(1)}%`,
+      note: `Answering "${audit.majorityLabel}" every time, which needs no model at all.`,
+    },
+    {
+      label: 'Train / test overlap',
+      value: `${audit.contaminationRate.toFixed(1)}%`,
+      note: audit.contaminationRate === 0
+        ? 'No test item appears in training, so nothing can score by memorising.'
+        : 'Some test text also appears in training — treat these scores with care.',
+    },
+    {
+      label: 'Evaluated on',
+      value: audit.testSize.toLocaleString(),
+      note: `Held out from ${audit.trainSize.toLocaleString()} training examples.`,
+    },
+  ];
+
+  const rules = measured.find((method) => method.audit?.termProvenance);
+  let provenanceBlock = '';
+  if (rules) {
+    const p = rules.audit.termProvenance;
+    const share = ((p.attestedTerms / p.totalTerms) * 100).toFixed(0);
+    provenanceBlock = `
+      <div class="floor-provenance">
+        <h3>Is the keyword baseline a real baseline?</h3>
+        <p>Its vocabulary is split by whether each term actually occurs in the training data, and the two halves are scored separately. A baseline whose every term is drawn from the corpus it is graded on is a fitted model wearing the word &ldquo;rules&rdquo;.</p>
+        <table class="floor-table">
+          <tbody>
+            <tr><td>Terms in the vocabulary</td><td>${p.totalTerms}</td></tr>
+            <tr><td>Of those, occurring in the training data</td><td>${p.attestedTerms} (${share}%)</td></tr>
+            <tr><td>Full vocabulary</td><td>${p.accuracyAllTerms.toFixed(2)}%</td></tr>
+            <tr><td>Only terms the corpus uses</td><td>${p.accuracyAttestedOnly.toFixed(2)}%</td></tr>
+            <tr><td>Only terms it never uses</td><td>${p.accuracyUnattestedOnly.toFixed(2)}%</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  host.innerHTML = `
+    <div class="floor-cards">
+      ${cards.map((card) => `
+        <div class="floor-card">
+          <span>${card.label}</span>
+          <strong>${card.value}</strong>
+          <small>${card.note}</small>
+        </div>`).join('')}
+    </div>
+    ${provenanceBlock}`;
 }
 
 /* Right rail. Counts and picks are derived from the data, never hard-coded —
@@ -392,6 +535,34 @@ export async function setupBenchmarkPage() {
     document.querySelectorAll(`[data-${key}]`).forEach((el) => { el.textContent = value; });
   });
 
+  /* Hyphenated attributes, so they cannot go through the camelCase loop above. */
+  const setText = (selector, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value ?? '—';
+  };
+  setText('[data-dataset-size]', problem.datasetSize);
+  setText('[data-dataset-license]', problem.datasetLicense);
+  setText('[data-dataset-provenance]', problem.datasetProvenance);
+
+  /* The header pill and the rail note both used to assert that every figure on
+     the page was illustrative. They are written from the data now, because
+     that claim stopped being true and nothing made it update. */
+  const measuredCount = problem.results.filter(countsAsEvidence).length;
+  const chip = document.querySelector('[data-hero-chip]');
+  if (chip) {
+    const { label } = statusChip(problem.status);
+    chip.textContent = label;
+    chip.className = `state-pill ${statusChip(problem.status).className}`;
+    chip.title = `${measuredCount} of ${problem.results.length} methods measured`;
+  }
+  const railState = document.querySelector('[data-rail-state]');
+  if (railState) {
+    const unrun = problem.results.filter(hasNoResult).map((m) => m.shortName);
+    railState.innerHTML = unrun.length
+      ? `<strong>${measuredCount} of ${problem.results.length} methods measured</strong> against ${problem.datasetLabel ?? 'a public dataset'}. ${unrun.join(' and ')} have not been run, so they carry no figures and no winner can be named.`
+      : `<strong>All ${problem.results.length} methods measured</strong> against ${problem.datasetLabel ?? 'a public dataset'}.`;
+  }
+
   const accuracy = document.querySelector('[data-accuracy]');
   const latency = document.querySelector('[data-latency]');
   const volume = document.querySelector('[data-volume]');
@@ -411,12 +582,13 @@ export async function setupBenchmarkPage() {
     setControls();
     renderRequirementChips(requirements);
     const recommendation = getRecommendation(problem.results, requirements);
-    renderEvidenceBanner(recommendation);
+    renderEvidenceBanner(recommendation, problem.results);
     renderKpis(problem, requirements, recommendation);
     renderScatter(problem, requirements, recommendation);
     renderChartLegend(problem, requirements, recommendation);
     renderChartTable(problem, requirements);
     renderTable(problem, requirements, recommendation);
+    renderFloors(problem);
   };
 
   accuracy.addEventListener('input', () => { requirements.minAccuracy = Number(accuracy.value); render(); });
@@ -471,7 +643,12 @@ export async function setupBenchmarkPage() {
   runNote.setAttribute('role', 'status');
   run.closest('.topbar').after(runNote);
   run.addEventListener('click', () => {
-    runNote.textContent = 'No benchmark runner yet — every figure on this page is demo data. Measured runs arrive with the Python runner (Phase 3).';
+    /* Runs cost money and take minutes, so the button explains rather than
+       fires. The runner is real and reproducible from the command line. */
+    runNote.textContent =
+      'Benchmarks are run from the command line, not the browser: '
+      + '`python -m app.benchmarks.cli run <problem> --method <method>`. '
+      + 'The hosted-model tiers need an API key, which is why they are marked not run.';
   });
 
   renderRail(problem);

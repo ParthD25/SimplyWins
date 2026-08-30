@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.models.benchmark import DatasetVersion, Method, Problem, RequirementProfile, Result
 from app.repositories.problem_repository import ProblemRepository
+from app.schemas.common import ProblemStatus
 from app.schemas.problem import DatasetPayload, MethodPayload, RequirementsPayload
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class SeedProblem(BaseModel):
     decision_question: str
     rationale: str
     benchmark_definition_version: str
-    status: str
+    status: ProblemStatus
     dataset: DatasetPayload
     default_requirements: RequirementsPayload
     methods: tuple[MethodPayload, ...]
@@ -119,6 +120,11 @@ def _to_orm(definition: SeedProblem) -> Problem:
                     raw_artifact_uri=method.result.raw_artifact_uri,
                     cost_state=method.result.cost_state.value,
                     sample_count=method.result.sample_count,
+                    leakage_audit_json=(
+                        method.result.leakage_audit.model_dump_json()
+                        if method.result.leakage_audit is not None
+                        else None
+                    ),
                     run_id=method.result.run_id,
                     measured_at=(
                         datetime.fromisoformat(method.result.measured_at)

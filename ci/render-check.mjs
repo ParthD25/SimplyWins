@@ -94,11 +94,18 @@ for (const path of PAGES) {
   const total = await page.$$eval('.problem-card', (c) => c.length);
   check(total > 0, 'library renders no problem cards');
 
-  // Search narrows the list.
-  await page.fill('[data-search]', 'invoice');
+  // Search narrows the list. The term is taken from a card actually on the
+  // page rather than hard-coded, so this checks the control rather than
+  // asserting which problems happen to exist today.
+  const firstTitle = await page.$eval('.problem-card h3', (el) => el.textContent.trim());
+  const term = firstTitle.split(/\s+/)[0];
+  await page.fill('[data-search]', term);
   await page.waitForTimeout(150);
   const searched = await page.$$eval('.problem-card', (c) => c.length);
-  check(searched > 0 && searched < total, `search did not narrow the list (${searched}/${total})`);
+  check(
+    searched > 0 && searched < total,
+    `search for "${term}" did not narrow the list (${searched}/${total})`,
+  );
 
   // Category tabs filter.
   await page.fill('[data-search]', '');
@@ -152,24 +159,55 @@ for (const path of PAGES) {
   await page.waitForTimeout(150);
   check((await page.textContent('[data-kpis]')) !== beforeCost, 'volume did not change cost');
 
-  // Auditability must change which methods qualify.
+  // Auditability is an invariant rather than a diff: whenever it is required,
+  // nothing non-auditable may be marked as meeting the requirements. Asserting
+  // that the toggle *changes* the table would only hold while some measured
+  // method is non-auditable, which is a property of today's data and not of
+  // the control.
   await page.$eval('[data-accuracy]', (el) => {
-    el.value = 80;
+    el.value = 1;
     el.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await page.waitForTimeout(150);
-  const beforeAudit = await table();
   await page.$eval('[data-audit]', (el) => {
-    el.checked = !el.checked;
+    el.checked = true;
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await page.waitForTimeout(150);
-  check((await table()) !== beforeAudit, 'auditability toggle changed nothing');
+  await page.waitForTimeout(200);
+  const offenders = await page.$$eval('[data-results-body] tr', (rows) =>
+    rows
+      .filter((row) => {
+        const cells = [...row.querySelectorAll('td')];
+        const auditable = cells[5]?.textContent.includes('Yes');
+        const passes = cells[6]?.textContent.includes('Pass');
+        return passes && !auditable;
+      })
+      .map((row) => row.querySelector('strong')?.textContent),
+  );
+  check(
+    offenders.length === 0,
+    `auditability required, but these were marked passing anyway: ${offenders.join(', ')}`,
+  );
 
-  // Chart and table must agree on how many methods exist.
+  // An unrun method must never be marked as meeting anything: its stored
+  // zeroes would otherwise read as instant and free at a low accuracy bar.
+  const unrunPassing = await page.$$eval('[data-results-body] tr.unrun-row', (rows) =>
+    rows.filter((row) => row.textContent.includes('Pass')).length,
+  );
+  check(unrunPassing === 0, 'an unrun method was marked as meeting the requirements');
+
+  // The table lists every method in the comparison set, so the reader can see
+  // what has not been run. The chart plots only methods that have figures —
+  // an unrun method has none, and plotting its zeroes would plant a point at
+  // the origin claiming a measurement nobody took. So the two agree on the
+  // methods with results, and differ by exactly the unrun ones.
   const points = await page.$$eval('.data-point', (p) => p.length);
   const rows = await page.$$eval('[data-results-body] tr', (r) => r.length);
-  check(points === rows, `chart has ${points} points but the table has ${rows} rows`);
+  const unrunRows = await page.$$eval('[data-results-body] tr.unrun-row', (r) => r.length);
+  check(
+    points === rows - unrunRows,
+    `chart has ${points} points; table has ${rows} rows of which ${unrunRows} are unrun`,
+  );
+  check(unrunRows > 0, 'fixture no longer covers unrun methods, so this check is vacuous');
 
   // The chart's table fallback must be reachable and populated.
   await page.click('[data-view="table"]');
@@ -201,8 +239,10 @@ await page.goto(`http://127.0.0.1:${PORT}/benchmark.html?problem=support-ticket-
   waitUntil: 'networkidle',
 });
 const rule = await page.evaluate(async () => {
-  const { getRecommendation, RECOMMENDATION_STATUS, countsAsEvidence } =
-    await import('./assets/app.js');
+  const {
+    getRecommendation, RECOMMENDATION_STATUS, countsAsEvidence,
+    methodMeetsRequirements, hasNoResult,
+  } = await import('./assets/app.js');
   const m = (id, rank, accuracy, resultState) => ({
     id, shortName: id, complexityRank: rank, accuracy, latencyMs: 10,
     costPer1k: 0.1, auditable: true, deterministic: true, kind: 'rules', resultState,
@@ -217,6 +257,15 @@ const rule = await page.evaluate(async () => {
       [m('demo', 1, 99.9, 'DEMO'), m('meas', 2, 95, 'MEASURED')], req).winner,
     demoNotEvidence: countsAsEvidence(m('x', 1, 99, 'DEMO')),
     missingStateFailsClosed: countsAsEvidence({ id: 'x', accuracy: 99 }),
+    notRunNotEvidence: countsAsEvidence(m('x', 1, 0, 'NOT_RUN')),
+    notRunDetected: hasNoResult(m('x', 1, 0, 'NOT_RUN')),
+    /* The dangerous case, which no slider can reach: an unrun method stores
+       zeroes, so against a zero accuracy bar it reads as instant and free and
+       would outrank every method that actually ran. */
+    unrunNeverMeetsRequirements: methodMeetsRequirements(
+      { ...m('x', 1, 0, 'NOT_RUN'), latencyMs: 0, costPer1k: 0 },
+      { minAccuracy: 0, maxLatencyMs: 1000, auditabilityRequired: false, monthlyVolume: 1 },
+    ),
     incomplete: RECOMMENDATION_STATUS.INCOMPLETE,
   };
 });
@@ -227,6 +276,12 @@ check(rule.mixed === rule.incomplete, 'mixed provenance must be BENCHMARK_INCOMP
 check(rule.demoWinnerBlocked === null, 'a DEMO method must never win');
 check(rule.demoNotEvidence === false, 'DEMO must not count as evidence');
 check(rule.missingStateFailsClosed === false, 'missing provenance must fail closed');
+check(rule.notRunNotEvidence === false, 'NOT_RUN must not count as evidence');
+check(rule.notRunDetected === true, 'NOT_RUN must be recognised as having no result');
+check(
+  rule.unrunNeverMeetsRequirements === false,
+  'an unrun method met the requirements — its zeroes were read as real figures',
+);
 
 await browser.close();
 server.close();

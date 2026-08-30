@@ -48,10 +48,48 @@ It follows that:
   a provisional leader a recommendation would overstate what is known.
 - Shipping an incomplete benchmark is allowed and expected. Concealing that it
   is incomplete is not.
+- `NOT_RUN` marks a method that belongs to the comparison set but has never
+  been run. It is distinct from `DEMO`, which carries illustrative figures:
+  a `NOT_RUN` method carries none, and its zero fields are placeholders that
+  must never be read, rendered, or filtered as values. Read literally they
+  describe a method that is instant, free, and perfectly inaccurate, which is
+  the most attractive method in any comparison. Such a method is still counted
+  in the method total, because the rule above turns on **every** method having
+  been measured.
 
 Cost derived from a measured value plus a documented assumption is `ESTIMATED`
 (section 5) and therefore cannot break a tie or exclude a method. It may be
 displayed alongside the evidence that produced it.
+
+### 3.2 A result is only evidence if the experiment could have failed
+
+**Every measured result must be published alongside the floors it had to beat:
+uniform chance, the score for always predicting the most common label, and the
+proportion of the evaluation set that also appears in training. A figure
+presented without them is not evidence, because a reader cannot tell a result
+from an artefact.**
+
+Two further requirements follow, and both exist because this project violated
+them and produced a meaningless benchmark as a result:
+
+- **No method may be evaluated on data written by whoever wrote the method.**
+  A corpus generated in this repository and a keyword baseline written by the
+  same author share a vocabulary, and the benchmark then measures the author
+  rather than the method. Measured: 73.6% of that baseline's keywords appeared
+  verbatim in the generator's own templates, the shared terms carried the
+  entire 78.9% score, and the terms chosen independently scored 25.3% against
+  a 20% floor. Benchmark corpora must come from a named external source with
+  its licence recorded.
+- **A method whose behaviour is defined by a term list must publish that list's
+  provenance** — what fraction of its terms occur in the training data, and
+  what the attested and unattested halves score separately. A baseline whose
+  every term is drawn from the corpus it is graded on is a fitted model, and
+  calling it a rules baseline misrepresents the comparison.
+
+A claim about a method's independence from its data is not admissible in a
+docstring or a comment. It must be measured on every run and published with the
+result, because the claim in this project's own code was false and went
+unchallenged for as long as nothing checked it.
 
 Default complexity order:
 1. deterministic rules / schema / regex
@@ -85,10 +123,13 @@ Every result must be one of:
 - `DEMO` — illustrative mock data for UI/product design only
 - `MEASURED` — produced by a reproducible benchmark runner
 - `ESTIMATED` — derived from a measured value plus a documented assumption
+- `NOT_RUN` — in the comparison set, never run, carrying no figures at all
 
 The frontend must visually distinguish these states. `DEMO` results are
 presented as visually separated and muted relative to `MEASURED` results, and
-labelled illustrative rather than evidence.
+labelled illustrative rather than evidence. `NOT_RUN` results must render no
+numbers whatsoever — not a zero, not a dash with a unit, and no point on a
+chart — because the absence of a measurement is not a measurement of zero.
 
 ## 6. API contract rules
 - API version prefix: `/v1`.

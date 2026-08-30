@@ -11,9 +11,10 @@ from app.errors import ProblemNotFoundError
 from app.models.benchmark import Method as MethodModel
 from app.models.benchmark import Problem as ProblemModel
 from app.repositories.problem_repository import ProblemRepository
-from app.schemas.common import DataState, MethodClass
+from app.schemas.common import DataState, MethodClass, ProblemStatus
 from app.schemas.problem import (
     DatasetPayload,
+    LeakageAuditPayload,
     MethodPayload,
     ProblemDetail,
     ProblemSummary,
@@ -35,7 +36,7 @@ def _to_summary(problem: ProblemModel) -> ProblemSummary:
         category=problem.category,
         description=problem.description,
         decision_question=problem.decision_question,
-        status=DataState(problem.status),
+        status=ProblemStatus(problem.status),
         benchmark_definition_version=problem.benchmark_definition_version,
         measured_count=measured,
         method_count=len(problem.methods),
@@ -70,6 +71,11 @@ def _to_method_payload(method: MethodModel) -> MethodPayload:
             cost_state=DataState(result.cost_state),
             run_id=result.run_id,
             sample_count=result.sample_count,
+            leakage_audit=(
+                LeakageAuditPayload.model_validate_json(result.leakage_audit_json)
+                if result.leakage_audit_json
+                else None
+            ),
         ),
     )
 

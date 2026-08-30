@@ -30,8 +30,17 @@ def test_seed_file_declares_its_version_and_data_state(seed) -> None:
     assert "measured" in seed.notice.lower()
 
 
-def test_seed_contains_the_six_mvp_problems(seed) -> None:
-    assert len(seed.problems) == 6
+def test_seed_contains_the_three_real_problems(seed) -> None:
+    """Three problems backed by real corpora, not six backed by none.
+
+    The earlier seed carried six, of which five had no measurements at all and
+    the sixth was measured against text written in this repository.
+    """
+    assert {p.slug for p in seed.problems} == {
+        "support-request-routing",
+        "spam-detection",
+        "sentiment-classification",
+    }
 
 
 def test_slugs_are_unique_and_kebab_case(seed) -> None:
@@ -66,10 +75,13 @@ def test_complexity_rank_follows_the_default_method_class_order(seed) -> None:
             )
 
 
-def test_method_ids_are_unique_within_and_across_problems(seed) -> None:
-    all_ids = [method.method_id for problem in seed.problems for method in problem.methods]
-
-    assert len(set(all_ids)) == len(all_ids)
+def test_method_ids_are_unique_within_each_problem(seed) -> None:
+    """Scoped per problem, matching the database's own constraint on
+    (problem_id, stable_key). The same method class competing on two problems
+    shares an id by design — they are the same method, not two."""
+    for problem in seed.problems:
+        ids = [m.method_id for m in problem.methods]
+        assert len(ids) == len(set(ids)), problem.slug
 
 
 def test_provenance_matches_the_claimed_state(seed) -> None:
@@ -99,11 +111,42 @@ def test_a_measured_problem_cites_a_checksummed_dataset(seed) -> None:
             assert len(problem.dataset.sha256) == 64
 
 
-def test_problem_status_is_measured_only_when_every_method_is(seed) -> None:
+def test_problem_status_reflects_how_far_it_has_got(seed) -> None:
     for problem in seed.problems:
         states = {m.result.result_state.value for m in problem.methods}
-        expected = "MEASURED" if states == {"MEASURED"} else "DEMO"
-        assert problem.status.upper() == expected, problem.slug
+        if states == {"MEASURED"}:
+            expected = "MEASURED"
+        elif "MEASURED" in states:
+            expected = "PARTIAL"
+        else:
+            expected = "NOT_RUN"
+        assert problem.status.value == expected, problem.slug
+
+
+def test_unrun_methods_carry_no_figures(seed) -> None:
+    """A NOT_RUN method's zeroes are placeholders. If any were ever non-zero a
+    reader could mistake them for a result."""
+    for problem in seed.problems:
+        for method in problem.methods:
+            if method.result.result_state.value != "NOT_RUN":
+                continue
+            assert method.result.accuracy == 0.0
+            assert method.result.latency_p50_ms == 0.0
+            assert method.result.cost_per_1k == 0.0
+            assert method.result.run_id is None
+            assert method.result.sample_count == 0
+
+
+def test_every_measured_result_carries_its_audit(seed) -> None:
+    """A number without its floors is not evidence a reader can weigh."""
+    for problem in seed.problems:
+        for method in problem.methods:
+            if method.result.result_state.value != "MEASURED":
+                continue
+            audit = method.result.leakage_audit
+            assert audit is not None, f"{problem.slug}/{method.method_id}"
+            assert audit.contamination_rate == 0.0
+            assert method.result.accuracy > audit.chance_accuracy
 
 
 def test_cost_is_never_claimed_as_measured(seed) -> None:

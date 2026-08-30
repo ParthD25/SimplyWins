@@ -1,0 +1,101 @@
+{
+  "accuracy": 78.8341,
+  "auditable": true,
+  "benchmark_definition_version": "2.0.0",
+  "code_commit_sha": "19811027d43f0a938f1c68e7e2b1cac4950375dd",
+  "completed_at": "2026-08-30T19:15:14.248420+00:00",
+  "complexity_rank": 2,
+  "confusion": {
+    "negative": {
+      "negative": 1124,
+      "positive": 270
+    },
+    "positive": {
+      "negative": 340,
+      "positive": 1148
+    }
+  },
+  "correct": 2272,
+  "cost_model": {
+    "as_of": "2026-08",
+    "basis": "vCPU-seconds at an on-demand cloud rate",
+    "rate_unit": "USD per vCPU-hour",
+    "rate_usd": 0.04,
+    "source": "Typical on-demand general-purpose vCPU pricing"
+  },
+  "cost_per_1k_usd": 7e-06,
+  "cost_state": "ESTIMATED",
+  "dataset": {
+    "license": "Research use (Socher et al., 2013) (https://nlp.stanford.edu/sentiment/)",
+    "name": "sst2-sentiment",
+    "path": "app/benchmarks/datasets/sst2_sentiment/data/sst2-sentiment.v1.0.0.jsonl",
+    "provenance": "Real corpus. SST-2 (Stanford Sentiment Treebank, binary sentence splits) \u2014 https://raw.githubusercontent.com/clairett/pytorch-sentiment-classification/master/data/SST2/train.tsv. train/dev/test TSVs pooled, then re-split here with this project's own seed so the split is reproducible from the recorded parameters alone. Split here at seed 20260830, builder version 1.0.0.",
+    "sha256": "e16e89eefe4147e5f58147d235f91a529cb348ff251d3d02b80998f062e30e35",
+    "test_examples": 2882,
+    "total_examples": 9602,
+    "train_examples": 6720,
+    "version": "1.0.0"
+  },
+  "deterministic": true,
+  "implementation_version": "3.0.0",
+  "latency_definition": "Wall-clock nanoseconds around a single-example predict() call, measured with time.perf_counter_ns() in-process after a warm-up pass. Reported as the median (p50) and 95th percentile over the evaluation split. Model setup and training time are excluded.",
+  "latency_mean_ms": 0.6811,
+  "latency_p50_ms": 0.6627,
+  "latency_p95_ms": 0.8736,
+  "leakage_audit": {
+    "chance_accuracy": 50.0,
+    "contaminated_examples": 0,
+    "contamination_rate": 0.0,
+    "majority_baseline_accuracy": 51.6308,
+    "majority_label": "positive",
+    "notes": [],
+    "term_provenance": null,
+    "test_size": 2882,
+    "train_size": 6720
+  },
+  "limitations": [
+    "The dataset is synthetic, so difficulty reflects its generator rather than production support traffic.",
+    "Only rules and traditional ML are implemented; no small-model or frontier-LLM result exists for this problem.",
+    "Cost is projected from measured latency and a published compute rate, not from a billed invoice."
+  ],
+  "macro_f1": 78.8327,
+  "method_class": "traditional-ml",
+  "method_id": "ml",
+  "method_name": "TF-IDF + Logistic Regression",
+  "metric_definition": "accuracy = exact-match of predicted label against the gold label, micro-averaged over every example in the evaluation split; macro_f1 = unweighted mean of per-class F1.",
+  "metric_definition_version": "1.0.0",
+  "model_name": "tfidf-char_wb-logreg",
+  "model_version": null,
+  "notes": "",
+  "per_class": [
+    {
+      "f1": 0.7865640307907628,
+      "label": "negative",
+      "precision": 0.76775956284153,
+      "recall": 0.806312769010043,
+      "support": 1394
+    },
+    {
+      "f1": 0.7900894700619407,
+      "label": "positive",
+      "precision": 0.8095909732016925,
+      "recall": 0.771505376344086,
+      "support": 1488
+    }
+  ],
+  "problem_slug": "sentiment-classification",
+  "prompt_version": null,
+  "provider": null,
+  "raw_artifact_uri": "runs/sentiment-classification--ml--20260830T191511Z/predictions.jsonl",
+  "result_state": "MEASURED",
+  "run_id": "sentiment-classification--ml--20260830T191511Z",
+  "runtime": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-fc-v22-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python": "3.12.3"
+  },
+  "sample_count": 2882,
+  "seed": 20260830,
+  "started_at": "2026-08-30T19:15:11.407030+00:00"
+}

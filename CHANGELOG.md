@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.8.0 — Real corpora, and the floors beside every number
+
+- **The benchmark could not produce a low score, so it was replaced.** Its
+  corpus was generated in this repository and the keyword baseline was written
+  by the same author. 73.6% of the baseline's 106 keywords appeared verbatim in
+  the generator's own templates; restricted to those it scored 78.9%, identical
+  to the full vocabulary, and restricted to the 28 terms the generator never
+  used, 25.3% against a 20% floor. **The keywords chosen independently carried
+  no signal at all.** The docstring claiming the vocabulary had been picked
+  "without consulting the dataset generator's phrasings" was false and is gone.
+- **Three real corpora replace it**, each downloaded from a named public source
+  with its licence and limitations recorded: CFPB consumer complaints (7-queue
+  routing, 3,066 rows), the UCI SMS Spam Collection (5,159 rows), and SST-2
+  film review sentences (9,602 rows). Nobody writing a method here chose the
+  words in those test sets.
+- Measured, with zero train/test overlap on all three:
+
+  | Problem | Rules | TF-IDF + logreg | Chance | Commonest label |
+  | --- | ---: | ---: | ---: | ---: |
+  | Support request routing | 46.43% | 79.87% | 14.29% | 14.29% |
+  | Spam detection | 92.06% | 98.77% | 50.00% | 87.54% |
+  | Sentiment | 59.33% | 78.83% | 50.00% | 51.63% |
+
+  The rules baseline now genuinely loses on routing by 33 points, which the
+  synthetic version never showed. On spam its whole vocabulary buys four and a
+  half points over answering "ham" every time.
+- **Every run carries an audit** of whether its result could have come out low:
+  the majority-class floor, uniform chance, train/test contamination, and for
+  keyword methods the vocabulary split by attestation with both halves scored
+  separately. Served through a typed API contract and shown on the benchmark
+  page. A test reconstructs the original bug in miniature to prove the audit
+  still reports it.
+- **Both hosted tiers are implemented** against the Anthropic SDK — a small
+  model and a frontier one, sharing prompt and parsing so a difference between
+  them is the model rather than the harness. They stay unmeasured until a key
+  exists: `setup()` raises rather than estimating. Their cost will be arithmetic
+  on the tokens the response reports, the only MEASURED cost in the project. No
+  server-side refusal fallback, because silently rerouting to another model
+  would put its answers in this model's column.
+- **New `NOT_RUN` state**, distinct from `DEMO`: a method with no figures at
+  all rather than illustrative ones. Listed rather than hidden, because the
+  evidence rule turns on every method having been measured. Three defects came
+  from treating such a method as one scoring zero — the chart plotted them at
+  the origin, `methodMeetsRequirements` would have passed them as instant and
+  free at a low accuracy bar, and the table printed their zeroes as figures.
+  All three fixed and guarded; the browser gate asserts the second directly
+  against the module, because no slider can reach the bar that exposes it.
+- Six problems became three, and the four with no real corpus were removed
+  rather than left showing invented numbers. Seed v1 and v2 are deleted; both
+  contained only fabricated data and were one environment variable away from
+  production.
+- `frontend/assets/data.js` is generated from the seed and checked for drift in
+  CI. It was maintained by hand, which is how a regex once rewrote a cost into
+  `1e-06e-06` and broke the module at parse time.
+- Sub-millisecond latency no longer rounds to "0ms", which stated something
+  impossible for a method answering in microseconds.
+- 176 tests pass.
+
 ## 0.7.0 — Rate limiting
 - **Every endpoint except `/health` is now rate limited**, closing the last
   requirement in section 11 of `PROJECT_STANDARD.md` that had no

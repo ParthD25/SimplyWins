@@ -45,7 +45,26 @@ run_backend() {
   # The runner is a deliverable, so a change that breaks it must fail here
   # rather than being discovered the next time someone runs a benchmark.
   step "Benchmark smoke test"
-  python -m app.benchmarks.cli run support-ticket-routing --method ticket-rules
+  python -m app.benchmarks.cli run spam-detection --method rules
+
+  # data.js used to be maintained by hand, which is how a regex once rewrote a
+  # cost into "1e-06e-06" and broke the module at parse time. It is generated
+  # now, so CI regenerates it and fails if the committed copy has drifted from
+  # the seed the API serves.
+  # Compared before and after regenerating rather than against git HEAD, so
+  # the check means the same thing whether or not the file is committed yet.
+  step "Frontend data matches the seed"
+  local data_js="$repo_root/frontend/assets/data.js"
+  local before after
+  before=$(sha256sum "$data_js" | cut -d" " -f1)
+  python -m app.seed.export_frontend >/dev/null
+  after=$(sha256sum "$data_js" | cut -d" " -f1)
+  if [ "$before" != "$after" ]; then
+    echo "frontend/assets/data.js was stale and has been regenerated." >&2
+    echo "Commit the regenerated file." >&2
+    return 1
+  fi
+  echo "ok: data.js matches the seed"
 }
 
 run_frontend() {

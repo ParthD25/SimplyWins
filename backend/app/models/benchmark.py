@@ -112,13 +112,18 @@ class Result(Base):
     cost_per_1k: Mapped[float] = mapped_column(Float)
     deterministic: Mapped[bool] = mapped_column(Boolean)
     auditable: Mapped[bool] = mapped_column(Boolean)
-    metric_definition_version: Mapped[str] = mapped_column(String(32))
+    # Null for a NOT_RUN method: nothing was measured, so no metric applied.
+    metric_definition_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     raw_artifact_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
     measured_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Cost is derived from measured latency plus an assumption, so it carries a
     # weaker state than the result it accompanies.
     cost_state: Mapped[str] = mapped_column(String(16), default="DEMO")
     sample_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The floors and contamination checks this figure must be read against,
+    # stored as JSON. Serving a number without them invites the reader to
+    # treat any accuracy as good news.
+    leakage_audit_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     method: Mapped[Method] = relationship(back_populates="result")
 

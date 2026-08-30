@@ -1,0 +1,101 @@
+{
+  "accuracy": 98.7734,
+  "auditable": true,
+  "benchmark_definition_version": "2.0.0",
+  "code_commit_sha": "19811027d43f0a938f1c68e7e2b1cac4950375dd",
+  "completed_at": "2026-08-30T19:15:08.999749+00:00",
+  "complexity_rank": 2,
+  "confusion": {
+    "ham": {
+      "ham": 1349,
+      "spam": 7
+    },
+    "spam": {
+      "ham": 12,
+      "spam": 181
+    }
+  },
+  "correct": 1530,
+  "cost_model": {
+    "as_of": "2026-08",
+    "basis": "vCPU-seconds at an on-demand cloud rate",
+    "rate_unit": "USD per vCPU-hour",
+    "rate_usd": 0.04,
+    "source": "Typical on-demand general-purpose vCPU pricing"
+  },
+  "cost_per_1k_usd": 7e-06,
+  "cost_state": "ESTIMATED",
+  "dataset": {
+    "license": "UCI ML Repository \u2014 research use, citation requested (https://archive.ics.uci.edu/dataset/228/sms+spam+collection)",
+    "name": "sms-spam",
+    "path": "app/benchmarks/datasets/sms_spam/data/sms-spam.v1.0.0.jsonl",
+    "provenance": "Real corpus. UCI SMS Spam Collection \u2014 https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip. Downloaded from the UCI static archive endpoint. Split here at seed 20260830, builder version 1.0.0.",
+    "sha256": "9a3ff0dc84e562a55e96f65ba1d681020ecf8c3e9b51b5b33eed026894551fe8",
+    "test_examples": 1549,
+    "total_examples": 5159,
+    "train_examples": 3610,
+    "version": "1.0.0"
+  },
+  "deterministic": true,
+  "implementation_version": "3.0.0",
+  "latency_definition": "Wall-clock nanoseconds around a single-example predict() call, measured with time.perf_counter_ns() in-process after a warm-up pass. Reported as the median (p50) and 95th percentile over the evaluation split. Model setup and training time are excluded.",
+  "latency_mean_ms": 0.7194,
+  "latency_p50_ms": 0.6581,
+  "latency_p95_ms": 0.9307,
+  "leakage_audit": {
+    "chance_accuracy": 50.0,
+    "contaminated_examples": 0,
+    "contamination_rate": 0.0,
+    "majority_baseline_accuracy": 87.5403,
+    "majority_label": "ham",
+    "notes": [],
+    "term_provenance": null,
+    "test_size": 1549,
+    "train_size": 3610
+  },
+  "limitations": [
+    "The dataset is synthetic, so difficulty reflects its generator rather than production support traffic.",
+    "Only rules and traditional ML are implemented; no small-model or frontier-LLM result exists for this problem.",
+    "Cost is projected from measured latency and a published compute rate, not from a billed invoice."
+  ],
+  "macro_f1": 97.1569,
+  "method_class": "traditional-ml",
+  "method_id": "ml",
+  "method_name": "TF-IDF + Logistic Regression",
+  "metric_definition": "accuracy = exact-match of predicted label against the gold label, micro-averaged over every example in the evaluation split; macro_f1 = unweighted mean of per-class F1.",
+  "metric_definition_version": "1.0.0",
+  "model_name": "tfidf-char_wb-logreg",
+  "model_version": null,
+  "notes": "",
+  "per_class": [
+    {
+      "f1": 0.993006993006993,
+      "label": "ham",
+      "precision": 0.991182953710507,
+      "recall": 0.9948377581120944,
+      "support": 1356
+    },
+    {
+      "f1": 0.9501312335958005,
+      "label": "spam",
+      "precision": 0.9627659574468085,
+      "recall": 0.9378238341968912,
+      "support": 193
+    }
+  ],
+  "problem_slug": "spam-detection",
+  "prompt_version": null,
+  "provider": null,
+  "raw_artifact_uri": "runs/spam-detection--ml--20260830T191507Z/predictions.jsonl",
+  "result_state": "MEASURED",
+  "run_id": "spam-detection--ml--20260830T191507Z",
+  "runtime": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-fc-v22-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python": "3.12.3"
+  },
+  "sample_count": 1549,
+  "seed": 20260830,
+  "started_at": "2026-08-30T19:15:07.264103+00:00"
+}

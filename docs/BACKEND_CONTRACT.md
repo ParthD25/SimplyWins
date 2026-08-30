@@ -43,16 +43,49 @@ Returns run metadata, status, result metrics, and raw artifact references.
 ## Frontend-facing problem shape
 ```json
 {
-  "slug": "invoice-field-extraction",
-  "title": "Invoice Field Extraction",
-  "category": "Document Processing",
+  "slug": "spam-detection",
+  "title": "Spam Detection",
+  "category": "Classification",
   "description": "...",
   "decision_question": "...",
-  "status": "DEMO",
+  "status": "PARTIAL",
   "default_requirements": {},
-  "results": []
+  "methods": [
+    {
+      "method_id": "rules",
+      "result": {
+        "result_state": "MEASURED",
+        "accuracy": 92.0594,
+        "leakage_audit": {
+          "chance_accuracy": 50.0,
+          "majority_baseline_accuracy": 87.5403,
+          "contamination_rate": 0.0,
+          "term_provenance": { "attested_fraction": 0.9688 }
+        }
+      }
+    },
+    {
+      "method_id": "frontier-llm",
+      "result": { "result_state": "NOT_RUN", "accuracy": 0.0 }
+    }
+  ]
 }
 ```
+
+## Provenance states
+
+`MEASURED`, `ESTIMATED`, `DEMO`, and `NOT_RUN`. The last means the method is
+part of the comparison set but has never been run: its numeric fields are
+zeroes and are placeholders, never values. Clients must not render or filter on
+them — read literally they describe a method that is instant, free, and
+perfectly inaccurate.
+
+`status` on a problem is a separate enum (`MEASURED`/`PARTIAL`/`NOT_RUN`),
+because how far a comparison set has got is not the provenance of a figure.
+
+Every `MEASURED` result carries `leakage_audit`: the floors the figure must be
+read against. A client showing an accuracy without them invites the reader to
+treat any number as good news.
 
 ## Important rule
 Recommendation logic should live in a backend domain module and be mirrored in frontend only for instant demo interaction. Backend remains authoritative once connected.

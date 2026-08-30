@@ -165,3 +165,39 @@ a.rail-item:hover strong{color:var(--blue)}
    bundled copy, so a reader is never left guessing. */
 .source-note{margin:0;padding:9px 13px;font-size:12px;line-height:1.5;color:#5b6472;background:#f4f6fa;border:1px solid var(--line);border-left:3px solid #b9c2d0;border-radius:9px}
 .source-note[hidden]{display:none}
+
+/* --- Provenance states -------------------------------------------------- */
+/* A method that has never run is muted further than an illustrative one: it
+   carries no figures at all, so nothing in its row should read as a value. */
+.state-notrun{background:#fbfbfc;color:#9aa3b2;border:1px dotted #d3d8e1}
+.results-table tr.unrun-row td{color:#aab2be}
+.results-table tr.unrun-row td:first-child{box-shadow:inset 3px 0 0 #eceff4}
+.results-table tr.unrun-row .method-cell strong{color:#98a2b3;font-weight:600}
+.unrun-label{color:#b6bcc7}
+
+.status-measured{background:#eaf6ee;color:#1c7a43;border:1px solid #bfe3cd}
+.status-partial{background:#fdf4e3;color:#8a6116;border:1px solid #ecd9ad}
+.status-notrun{background:#f5f6f8;color:#7b8496;border:1px dashed #cfd5de}
+
+/* --- Floors panel ------------------------------------------------------- */
+.panel-note{margin:.35rem 0 0;max-width:62ch;color:#5c6675;font-size:.86rem;line-height:1.5}
+.floors{padding:1.15rem 1.35rem 1.35rem}
+.floor-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.85rem}
+.floor-card{border:1px solid #e6e9ef;border-radius:10px;padding:.85rem .95rem;background:#fdfdfe}
+.floor-card span{display:block;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;color:#7b8496}
+.floor-card strong{display:block;margin:.3rem 0 .35rem;font-size:1.45rem;font-variant-numeric:tabular-nums;color:#171717}
+.floor-card small{display:block;color:#67707e;font-size:.78rem;line-height:1.45}
+
+.floor-provenance{margin-top:1.4rem;padding-top:1.2rem;border-top:1px solid #edeff3}
+.floor-provenance h3{margin:0 0 .4rem;font-size:.98rem}
+.floor-provenance p{margin:0 0 .8rem;max-width:70ch;color:#5c6675;font-size:.86rem;line-height:1.55}
+.floor-table{width:100%;border-collapse:collapse;font-size:.87rem;max-width:520px}
+.floor-table td{padding:.42rem .6rem;border-bottom:1px solid #eef0f4}
+.floor-table td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:620}
+.floor-table tr:last-child td{border-bottom:0}
+
+@media (prefers-color-scheme: dark){
+  .floor-card{background:#15171b;border-color:#272b32}
+  .floor-card strong{color:#f2f3f5}
+  .floor-table td{border-bottom-color:#242830}
+}
