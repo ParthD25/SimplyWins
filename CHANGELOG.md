@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.4.0 — The evidence rule
+- Added section 3.1 to `PROJECT_STANDARD.md`: **no value may influence a
+  SimplestWins recommendation unless its provenance state is `MEASURED`, and a
+  benchmark whose method set mixes states cannot produce a final
+  recommendation.** This is now the load-bearing rule of the product.
+- `recommend()` enforces it. `DEMO` and `ESTIMATED` methods are still evaluated
+  and returned so the UI can show the intended comparison set, but they cannot
+  enter the passing set, the ranking, a tie-break, or the Pareto frontier.
+- New status `BENCHMARK_INCOMPLETE`, returned while any method is unmeasured.
+  It reports how much evidence exists ("2 of 4 methods measured") and names no
+  winner, because an unmeasured method could still change the outcome.
+- `best_measured_method_id` reports the provisional leader among measured
+  methods. It is deliberately not a recommendation and is labelled as such
+  everywhere it appears.
+- `MethodCandidate.result_state` defaults to `DEMO`, so the rule fails closed:
+  a caller who omits provenance gets no recommendation rather than an
+  accidental one.
+- `/v1` recommendation responses now carry `result_state` and
+  `counts_as_evidence` per method, plus `measured_count`, `method_count`, and
+  `best_measured_method_id`.
+- Frontend mirrors the rule exactly, verified against the shipped module.
+  Illustrative rows are muted with a dashed leading edge and an "Illustrative"
+  tag; chart points for them are hollow and dashed; the legend names their
+  state; an amber banner states the incompleteness above the evidence.
+- The rail panel was renamed from "Current Picks" to "Other benchmarks" — with
+  nothing measured it contained no picks.
+- Because every seeded figure is `DEMO`, the API and UI now correctly decline to
+  recommend anything for all six problems. That is the intended behaviour, not
+  a regression: the product would rather say "not enough evidence yet" than
+  force an answer.
+- 124 tests pass, including eleven that exist specifically to stop this rule
+  being weakened later.
+
 ## 0.3.0 — Benchmark runner and the first measured results (Phase 3, part 1)
 - Added the benchmark runner: `BenchmarkMethod` protocol, deterministic scoring,
   and an immutable run record carrying every field section 4 of

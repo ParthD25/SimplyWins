@@ -10,6 +10,7 @@ The product is not an LLM leaderboard. It compares implementation classes such a
 ## 2. Non-goals
 - Do not optimize for making AI win.
 - Do not declare a winner when no method passes all required constraints.
+- Do not let a `DEMO` or `ESTIMATED` value influence a recommendation (see 3.1).
 - Do not mix demo/synthetic results with measured results without visible labeling.
 - Do not hide model/provider/version details for measured runs.
 - Do not add chat as the primary interface.
@@ -22,6 +23,35 @@ The product is not an LLM leaderboard. It compares implementation classes such a
 3. Sort passing methods by `complexity_rank` ascending.
 4. Break ties by lower cost, then lower latency.
 5. If no method passes, return `NO_PASSING_METHOD`; do not force a winner.
+
+### 3.1 Evidence rule
+
+**No value may influence a SimplestWins recommendation unless its provenance
+state is `MEASURED`. A benchmark whose method set mixes provenance states
+cannot produce a final recommendation.**
+
+This is the load-bearing rule of the product. SimplestWins exists to answer a
+question with evidence; a recommendation shaped even partly by illustrative
+numbers is the failure the project is built to prevent.
+
+It follows that:
+
+- `DEMO` and `ESTIMATED` values never enter ranking, tie-breaks, the passing
+  set, or the Pareto frontier. They are display-only.
+- A recommendation is produced only when **every** method in the benchmark's
+  declared method set carries a `MEASURED` result. Until then the status is
+  `BENCHMARK_INCOMPLETE` and no winner is named.
+- `BENCHMARK_INCOMPLETE` must state how much evidence exists — for example
+  "2 of 4 methods measured".
+- A "best measured result so far" may be shown, and must not be labelled a
+  recommendation. An unmeasured method can still change the outcome, so calling
+  a provisional leader a recommendation would overstate what is known.
+- Shipping an incomplete benchmark is allowed and expected. Concealing that it
+  is incomplete is not.
+
+Cost derived from a measured value plus a documented assumption is `ESTIMATED`
+(section 5) and therefore cannot break a tie or exclude a method. It may be
+displayed alongside the evidence that produced it.
 
 Default complexity order:
 1. deterministic rules / schema / regex
@@ -56,7 +86,9 @@ Every result must be one of:
 - `MEASURED` — produced by a reproducible benchmark runner
 - `ESTIMATED` — derived from a measured value plus a documented assumption
 
-The frontend must visually distinguish these states.
+The frontend must visually distinguish these states. `DEMO` results are
+presented as visually separated and muted relative to `MEASURED` results, and
+labelled illustrative rather than evidence.
 
 ## 6. API contract rules
 - API version prefix: `/v1`.

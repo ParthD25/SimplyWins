@@ -11,10 +11,10 @@ export const benchmarkProblems = [
     rationale: 'When document structure is stable, a deterministic pipeline can be cheaper, faster, and easier to audit while still meeting the required quality target.',
     requirements: { minAccuracy: 95, maxLatencyMs: 800, auditabilityRequired: true, monthlyVolume: 100000 },
     results: [
-      { id: 'invoice-rules', name: 'Rules + OCR Pipeline', shortName: 'Rules + OCR', kind: 'rules', accuracy: 96.2, costPer1k: 0.12, latencyMs: 120, deterministic: true, auditable: true, complexityRank: 1, notes: 'Best fit for stable invoice layouts and structured fields.' },
-      { id: 'invoice-ml', name: 'Traditional ML (XGBoost)', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 95.1, costPer1k: 0.48, latencyMs: 310, deterministic: true, auditable: true, complexityRank: 2, notes: 'Handles moderate layout variation but adds training and feature maintenance.' },
-      { id: 'invoice-small', name: 'Small Vision-Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 93.8, costPer1k: 2.15, latencyMs: 620, deterministic: false, auditable: false, complexityRank: 3, notes: 'Flexible, but misses the current quality threshold.' },
-      { id: 'invoice-frontier', name: 'Frontier Multimodal LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 97.6, costPer1k: 18.9, latencyMs: 1250, deterministic: false, auditable: false, complexityRank: 4, notes: 'Highest raw accuracy, but cost and latency exceed this use case.' },
+      { id: 'invoice-rules', name: 'Rules + OCR Pipeline', shortName: 'Rules + OCR', kind: 'rules', accuracy: 96.2, costPer1k: 0.12, latencyMs: 120, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Best fit for stable invoice layouts and structured fields.' },
+      { id: 'invoice-ml', name: 'Traditional ML (XGBoost)', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 95.1, costPer1k: 0.48, latencyMs: 310, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Handles moderate layout variation but adds training and feature maintenance.' },
+      { id: 'invoice-small', name: 'Small Vision-Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 93.8, costPer1k: 2.15, latencyMs: 620, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Flexible, but misses the current quality threshold.' },
+      { id: 'invoice-frontier', name: 'Frontier Multimodal LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 97.6, costPer1k: 18.9, latencyMs: 1250, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Highest raw accuracy, but cost and latency exceed this use case.' },
     ],
   },
   {
@@ -29,10 +29,10 @@ export const benchmarkProblems = [
     rationale: 'The lowest-complexity method that clears the target is a small VLM; a frontier model adds quality but not enough value to justify the extra cost.',
     requirements: { minAccuracy: 93, maxLatencyMs: 1600, auditabilityRequired: false, monthlyVolume: 40000 },
     results: [
-      { id: 'receipt-rules', name: 'OCR + Regex Rules', shortName: 'Rules + OCR', kind: 'rules', accuracy: 82.5, costPer1k: 0.15, latencyMs: 145, deterministic: true, auditable: true, complexityRank: 1, notes: 'Breaks quickly as visual layout and merchant formatting vary.' },
-      { id: 'receipt-ml', name: 'Traditional ML + Layout Features', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 90.8, costPer1k: 0.61, latencyMs: 340, deterministic: true, auditable: true, complexityRank: 2, notes: 'Strong baseline but still under the quality target.' },
-      { id: 'receipt-small', name: 'Small Vision-Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 94.1, costPer1k: 2.45, latencyMs: 710, deterministic: false, auditable: false, complexityRank: 3, notes: 'First method that clears the target at reasonable cost.' },
-      { id: 'receipt-frontier', name: 'Frontier Multimodal LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 96.4, costPer1k: 19.4, latencyMs: 1380, deterministic: false, auditable: false, complexityRank: 4, notes: 'Best score, but the small model already meets requirements.' },
+      { id: 'receipt-rules', name: 'OCR + Regex Rules', shortName: 'Rules + OCR', kind: 'rules', accuracy: 82.5, costPer1k: 0.15, latencyMs: 145, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Breaks quickly as visual layout and merchant formatting vary.' },
+      { id: 'receipt-ml', name: 'Traditional ML + Layout Features', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 90.8, costPer1k: 0.61, latencyMs: 340, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Strong baseline but still under the quality target.' },
+      { id: 'receipt-small', name: 'Small Vision-Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 94.1, costPer1k: 2.45, latencyMs: 710, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'First method that clears the target at reasonable cost.' },
+      { id: 'receipt-frontier', name: 'Frontier Multimodal LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 96.4, costPer1k: 19.4, latencyMs: 1380, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Best score, but the small model already meets requirements.' },
     ],
   },
   {
@@ -47,10 +47,10 @@ export const benchmarkProblems = [
     rationale: 'Traditional text classification solves this job cleanly. The LLM approaches are unnecessary under the current business constraints.',
     requirements: { minAccuracy: 92, maxLatencyMs: 500, auditabilityRequired: true, monthlyVolume: 250000 },
     results: [
-      { id: 'ticket-rules', name: 'Keyword + Priority Rules', shortName: 'Rules', kind: 'rules', accuracy: 91.7, costPer1k: 0.01, latencyMs: 5, deterministic: true, auditable: true, complexityRank: 1, notes: 'Nearly clears the bar but struggles with ambiguous language.' },
-      { id: 'ticket-ml', name: 'TF-IDF + Logistic Regression', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 94.6, costPer1k: 0.03, latencyMs: 18, deterministic: true, auditable: true, complexityRank: 2, notes: 'Clears the threshold with very low operating cost.' },
-      { id: 'ticket-small', name: 'Small Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 95.2, costPer1k: 0.92, latencyMs: 240, deterministic: false, auditable: false, complexityRank: 3, notes: 'Marginal quality gain for much higher complexity.' },
-      { id: 'ticket-frontier', name: 'Frontier LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 96.0, costPer1k: 6.7, latencyMs: 840, deterministic: false, auditable: false, complexityRank: 4, notes: 'Exceeds the default latency constraint.' },
+      { id: 'ticket-rules', name: 'Keyword + Priority Rules', shortName: 'Rules', kind: 'rules', accuracy: 91.7, costPer1k: 0.01, latencyMs: 5, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Nearly clears the bar but struggles with ambiguous language.' },
+      { id: 'ticket-ml', name: 'TF-IDF + Logistic Regression', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 94.6, costPer1k: 0.03, latencyMs: 18, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Clears the threshold with very low operating cost.' },
+      { id: 'ticket-small', name: 'Small Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 95.2, costPer1k: 0.92, latencyMs: 240, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Marginal quality gain for much higher complexity.' },
+      { id: 'ticket-frontier', name: 'Frontier LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 96.0, costPer1k: 6.7, latencyMs: 840, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Exceeds the default latency constraint.' },
     ],
   },
   {
@@ -65,10 +65,10 @@ export const benchmarkProblems = [
     rationale: 'A carefully designed deterministic matcher already clears the requirement and is much easier to inspect at scale.',
     requirements: { minAccuracy: 96, maxLatencyMs: 250, auditabilityRequired: true, monthlyVolume: 1000000 },
     results: [
-      { id: 'dupe-rules', name: 'Blocking + Fuzzy Match', shortName: 'Rules + Fuzzy', kind: 'rules', accuracy: 96.8, costPer1k: 0.02, latencyMs: 14, deterministic: true, auditable: true, complexityRank: 1, notes: 'Strong for structured identifiers and explainable matching rules.' },
-      { id: 'dupe-ml', name: 'Gradient Boosted Pair Classifier', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 97.4, costPer1k: 0.07, latencyMs: 30, deterministic: true, auditable: true, complexityRank: 2, notes: 'Higher recall on noisier records, but not required by default.' },
-      { id: 'dupe-small', name: 'Embedding Similarity', shortName: 'Small Model', kind: 'small-model', accuracy: 95.9, costPer1k: 0.34, latencyMs: 90, deterministic: false, auditable: false, complexityRank: 3, notes: 'Useful for free-form text, weaker for this structured task.' },
-      { id: 'dupe-frontier', name: 'Frontier LLM Pair Judge', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 97.8, costPer1k: 9.4, latencyMs: 920, deterministic: false, auditable: false, complexityRank: 4, notes: 'Too expensive and slow for million-record monthly volume.' },
+      { id: 'dupe-rules', name: 'Blocking + Fuzzy Match', shortName: 'Rules + Fuzzy', kind: 'rules', accuracy: 96.8, costPer1k: 0.02, latencyMs: 14, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Strong for structured identifiers and explainable matching rules.' },
+      { id: 'dupe-ml', name: 'Gradient Boosted Pair Classifier', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 97.4, costPer1k: 0.07, latencyMs: 30, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Higher recall on noisier records, but not required by default.' },
+      { id: 'dupe-small', name: 'Embedding Similarity', shortName: 'Small Model', kind: 'small-model', accuracy: 95.9, costPer1k: 0.34, latencyMs: 90, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Useful for free-form text, weaker for this structured task.' },
+      { id: 'dupe-frontier', name: 'Frontier LLM Pair Judge', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 97.8, costPer1k: 9.4, latencyMs: 920, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Too expensive and slow for million-record monthly volume.' },
     ],
   },
   {
@@ -83,10 +83,10 @@ export const benchmarkProblems = [
     rationale: 'This is a strong example of where AI is overkill: explicit validation rules are more accurate, cheaper, faster, and fully auditable.',
     requirements: { minAccuracy: 99, maxLatencyMs: 150, auditabilityRequired: true, monthlyVolume: 500000 },
     results: [
-      { id: 'form-rules', name: 'Schema + Business Rules', shortName: 'Rules', kind: 'rules', accuracy: 99.7, costPer1k: 0.01, latencyMs: 3, deterministic: true, auditable: true, complexityRank: 1, notes: 'Directly expresses required fields and cross-field constraints.' },
-      { id: 'form-ml', name: 'Anomaly Classifier', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 97.9, costPer1k: 0.04, latencyMs: 15, deterministic: true, auditable: true, complexityRank: 2, notes: 'Useful for unknown anomalies, but weaker on explicit validity rules.' },
-      { id: 'form-small', name: 'Small Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 98.4, costPer1k: 0.77, latencyMs: 190, deterministic: false, auditable: false, complexityRank: 3, notes: 'Adds uncertainty to a mostly deterministic job.' },
-      { id: 'form-frontier', name: 'Frontier LLM Validator', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 99.1, costPer1k: 5.8, latencyMs: 680, deterministic: false, auditable: false, complexityRank: 4, notes: 'Does not beat a schema validator on this task.' },
+      { id: 'form-rules', name: 'Schema + Business Rules', shortName: 'Rules', kind: 'rules', accuracy: 99.7, costPer1k: 0.01, latencyMs: 3, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Directly expresses required fields and cross-field constraints.' },
+      { id: 'form-ml', name: 'Anomaly Classifier', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 97.9, costPer1k: 0.04, latencyMs: 15, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Useful for unknown anomalies, but weaker on explicit validity rules.' },
+      { id: 'form-small', name: 'Small Language Model', shortName: 'Small Model', kind: 'small-model', accuracy: 98.4, costPer1k: 0.77, latencyMs: 190, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Adds uncertainty to a mostly deterministic job.' },
+      { id: 'form-frontier', name: 'Frontier LLM Validator', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 99.1, costPer1k: 5.8, latencyMs: 680, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Does not beat a schema validator on this task.' },
     ],
   },
   {
@@ -101,10 +101,10 @@ export const benchmarkProblems = [
     rationale: 'This task benefits from learned semantics, but a small model is sufficient; the frontier model is unnecessary.',
     requirements: { minAccuracy: 90, maxLatencyMs: 700, auditabilityRequired: false, monthlyVolume: 120000 },
     results: [
-      { id: 'sentiment-rules', name: 'Lexicon Rules', shortName: 'Rules', kind: 'rules', accuracy: 76.4, costPer1k: 0.01, latencyMs: 2, deterministic: true, auditable: true, complexityRank: 1, notes: 'Fails on negation, sarcasm, and domain-specific language.' },
-      { id: 'sentiment-ml', name: 'TF-IDF + Linear SVM', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 89.5, costPer1k: 0.03, latencyMs: 12, deterministic: true, auditable: true, complexityRank: 2, notes: 'Close to the quality target but not quite enough.' },
-      { id: 'sentiment-small', name: 'Fine-Tuned Small Transformer', shortName: 'Small Model', kind: 'small-model', accuracy: 93.2, costPer1k: 0.27, latencyMs: 75, deterministic: false, auditable: false, complexityRank: 3, notes: 'Clears the target with low enough cost and latency.' },
-      { id: 'sentiment-frontier', name: 'Frontier LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 94.1, costPer1k: 4.9, latencyMs: 720, deterministic: false, auditable: false, complexityRank: 4, notes: 'Marginal gain while missing the default latency target.' },
+      { id: 'sentiment-rules', name: 'Lexicon Rules', shortName: 'Rules', kind: 'rules', accuracy: 76.4, costPer1k: 0.01, latencyMs: 2, deterministic: true, auditable: true, complexityRank: 1, resultState: 'DEMO', notes: 'Fails on negation, sarcasm, and domain-specific language.' },
+      { id: 'sentiment-ml', name: 'TF-IDF + Linear SVM', shortName: 'Traditional ML', kind: 'traditional-ml', accuracy: 89.5, costPer1k: 0.03, latencyMs: 12, deterministic: true, auditable: true, complexityRank: 2, resultState: 'DEMO', notes: 'Close to the quality target but not quite enough.' },
+      { id: 'sentiment-small', name: 'Fine-Tuned Small Transformer', shortName: 'Small Model', kind: 'small-model', accuracy: 93.2, costPer1k: 0.27, latencyMs: 75, deterministic: false, auditable: false, complexityRank: 3, resultState: 'DEMO', notes: 'Clears the target with low enough cost and latency.' },
+      { id: 'sentiment-frontier', name: 'Frontier LLM', shortName: 'Frontier LLM', kind: 'frontier-llm', accuracy: 94.1, costPer1k: 4.9, latencyMs: 720, deterministic: false, auditable: false, complexityRank: 4, resultState: 'DEMO', notes: 'Marginal gain while missing the default latency target.' },
     ],
   },
 ];

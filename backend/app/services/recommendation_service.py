@@ -8,6 +8,9 @@ values through, API payload out.
 from __future__ import annotations
 
 from app.domain.recommendation import (
+    DataState as DomainDataState,
+)
+from app.domain.recommendation import (
     MethodCandidate,
     Recommendation,
     Requirements,
@@ -15,6 +18,7 @@ from app.domain.recommendation import (
 )
 from app.models.benchmark import Problem as ProblemModel
 from app.repositories.problem_repository import ProblemRepository
+from app.schemas.common import DataState
 from app.schemas.problem import RequirementsPayload
 from app.schemas.recommendation import (
     ConstraintCheckPayload,
@@ -49,6 +53,7 @@ def _to_candidates(problem: ProblemModel) -> tuple[MethodCandidate, ...]:
                 cost_per_1k=result.cost_per_1k,
                 deterministic=result.deterministic,
                 auditable=result.auditable,
+                result_state=DomainDataState(result.result_state),
             )
         )
     return tuple(candidates)
@@ -65,6 +70,8 @@ def _to_response(problem: ProblemModel, recommendation: Recommendation) -> Recom
             method_id=evaluation.method_id,
             complexity_rank=evaluation.complexity_rank,
             passed=evaluation.passed,
+            result_state=DataState(evaluation.result_state.value),
+            counts_as_evidence=evaluation.counts_as_evidence,
             projected_monthly_cost=round(evaluation.monthly_cost, 2),
             failed_constraints=evaluation.failed_constraints,
             constraint_checks=tuple(
@@ -87,6 +94,9 @@ def _to_response(problem: ProblemModel, recommendation: Recommendation) -> Recom
         evaluations=evaluations,
         benchmark_definition_version=problem.benchmark_definition_version,
         data_state_notice=_data_state_notice(problem),
+        measured_count=recommendation.measured_count,
+        method_count=recommendation.method_count,
+        best_measured_method_id=recommendation.best_measured_method_id,
     )
 
 
