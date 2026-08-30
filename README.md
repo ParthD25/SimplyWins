@@ -45,6 +45,25 @@ this job is not a rules job. On sentiment the lexicon barely clears a coin flip.
 No problem names a winner, because two of four methods are unrun on each and an
 unrun method could displace the current leader.
 
+**The accuracy column is the least interesting one.** Traditional ML beats
+keyword rules on all three problems at McNemar p < 1e-22, so none of those gaps
+is noise — but the error *profiles* say more than the rates do:
+
+- On spam, rules reach 92.06% with a precision on spam of 0.636. At the stated
+  5M messages a month that is **303,422 legitimate messages wrongly flagged**,
+  against 22,595 for the model — 13x more, out of a 6.7-point accuracy gap.
+- On sentiment, the rules baseline answers "positive" for 88.5% of inputs where
+  the truth is 51.6% positive, and catches one negative in five. Its 59.33% is
+  a majority-class predictor with extra steps.
+- The routing model is statistically unbiased across seven queues (chi-square
+  1.3 on 6 df, p = 0.97), and its errors sit in semantically adjacent pairs —
+  mortgage against loans, money-transfer against bank-account — which is label
+  noise in the corpus rather than model failure.
+
+[`docs/ANALYSIS.md`](docs/ANALYSIS.md) has the full output: Wilson intervals,
+McNemar tests, per-class precision and recall, prior-bias chi-squares, error
+projections at operating volume, and accuracy by input length.
+
 ## Why the earlier numbers were deleted
 
 An earlier version of this benchmark ran on text generated in this repository,
@@ -108,7 +127,7 @@ so on the page. Set `window.SIMPLESTWINS_API_BASE` to point it at an API.
 
 ```bash
 scripts/ci.sh              # everything CI runs
-scripts/ci.sh backend      # lint, format, types, migration drift, 176 tests, benchmark smoke
+scripts/ci.sh backend      # lint, format, types, migration drift, 197 tests, benchmark smoke
 scripts/ci.sh frontend     # ESM syntax, then 5 pages x 2 widths in a real browser
 ```
 

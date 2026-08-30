@@ -1,6 +1,6 @@
 [project]
 name = "simplestwins-backend"
-version = "0.8.0"
+version = "0.9.0"
 description = "SimplestWins backend: benchmark problem definitions and the lowest-complexity-method recommendation service."
 requires-python = ">=3.12"
 dependencies = [
@@ -65,4 +65,10 @@ disallow_untyped_defs = false
 # needs it rather than relaxing strict mode across the project.
 [[tool.mypy.overrides]]
 module = "sklearn.*"
+ignore_missing_imports = true
+
+# scipy ships no bundled stubs either. Narrowed to scipy.stats, which is the
+# only part the analysis module touches.
+[[tool.mypy.overrides]]
+module = "scipy.*"
 ignore_missing_imports = true

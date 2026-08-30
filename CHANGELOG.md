@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.9.0 — What the accuracy figures were hiding
+
+An accuracy number is a point estimate from one sample. On its own it cannot
+say whether two methods differ, whether a method is systematically biased, or
+how much of a gap is sampling noise. `app/benchmarks/analysis.py` computes
+those quantities from the per-example predictions every run already writes, and
+`python -m app.benchmarks.analyze` reports them. Full output in
+[`docs/ANALYSIS.md`](docs/ANALYSIS.md).
+
+- **Wilson score intervals**, not the normal approximation, which produces
+  bounds above 1 at the accuracies these methods reach — for 98/100 its upper
+  bound is 1.0016, which is not a probability. A test asserts the difference.
+- **McNemar's exact test**, not two independent proportion tests: both methods
+  are scored on the same examples, so their errors are paired. The exact
+  binomial form rather than the chi-square approximation, which is unreliable
+  at small discordant counts — exactly where the answer matters.
+- **Paired bootstrap** for the accuracy difference, resampling examples
+  together so the pairing survives.
+- **Class-prior bias**: predicted label distribution against the true one, by
+  chi-square goodness of fit.
+- **Error projection to operating volume**, because a decision is made on
+  counts rather than rates.
+
+The headline findings, all on the previously measured results:
+
+- **Traditional ML beats keyword rules on all three problems, decisively.**
+  McNemar p = 1.7e-23 (spam), 3.1e-60 (routing), 4.3e-59 (sentiment). None of
+  these gaps is sampling noise.
+- **The sentiment rules baseline is close to a constant predictor.** It answers
+  "positive" for 88.5% of inputs where the truth is 51.6% positive, and its
+  recall on negatives is 0.199. Its 59.33% accuracy is 7.7 points over the
+  majority-class floor, achieved mostly by agreeing with the majority class.
+  Prior-bias chi-square 1567 on 1 df.
+- **Accuracy hid a disqualifying error profile on spam.** Rules reach 92.06%,
+  but their precision on spam is 0.636: at the problem's stated 5M messages a
+  month that is **303,422 legitimate messages wrongly flagged (6.93% of them)**
+  against 22,595 for the ML model — 13x more, from a 6.7-point accuracy gap.
+  The requirement doc already said a false positive hides a real message from
+  someone; this is what that costs.
+- **The ML routing model is unbiased across seven queues** (chi-square 1.3 on
+  6 df, p = 0.97) and its errors are concentrated in semantically adjacent
+  pairs — money-transfer against bank-account, mortgage against loans. That is
+  the CFPB label noise recorded in the dataset card, now quantified rather than
+  asserted.
+- **The two method classes respond to input length in opposite directions.**
+  Rules on spam degrade from 96.90% to 86.34% as messages lengthen, because a
+  longer legitimate message has more chances to contain a spam word. Rules on
+  routing improve from 38.10% to 50.65%, because a longer complaint has more
+  chances to contain any keyword at all.
+
+Estimators are implemented here rather than imported, so the arithmetic is
+readable and testable; only the binomial and chi-square CDFs come from scipy.
+Each is checked against an independently derived value, and Wilson additionally
+against its success/failure symmetry, which depends on no typed-in constant.
+
+197 tests pass.
+
 ## 0.8.0 — Real corpora, and the floors beside every number
 
 - **The benchmark could not produce a low score, so it was replaced.** Its
