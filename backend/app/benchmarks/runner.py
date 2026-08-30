@@ -1,0 +1,337 @@
+"""Executes a benchmark and writes an immutable run record.
+
+Order matters here. Raw per-example predictions are written to disk *before*
+aggregation, so a published score can always be recomputed from the artifact
+rather than trusted. Section 4 of PROJECT_STANDARD.md lists what a run must
+carry; ``RunRecord`` is that list made concrete.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import platform
+import subprocess
+import sys
+import time
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+
+from app.benchmarks.base import BenchmarkMethod, Example, MethodConfig
+from app.benchmarks.evaluation import (
+    LATENCY_DEFINITION,
+    METRIC_DEFINITION,
+    METRIC_DEFINITION_VERSION,
+    Scores,
+    score,
+)
+from app.benchmarks.registry import get_benchmark
+
+logger = logging.getLogger(__name__)
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+# Every execution lands here; the directory is gitignored working output.
+RUNS_ROOT = BACKEND_ROOT / "runs"
+# Only runs promoted with `--publish` land here, and those are the ones the
+# product may cite. Keeping them apart stops an exploratory run from being
+# mistaken for a published result.
+PUBLISHED_ROOT = BACKEND_ROOT / "benchmarks" / "published"
+
+
+def _artifact_uri(path: Path) -> str:
+    """Repo-relative when the run lives inside the checkout, absolute otherwise.
+
+    A caller may legitimately point the runner at a directory outside the
+    repository, so this must not assume containment.
+    """
+    try:
+        return str(path.relative_to(BACKEND_ROOT))
+    except ValueError:
+        return str(path)
+
+
+WARMUP_EXAMPLES = 5
+
+
+@dataclass(frozen=True, slots=True)
+class DatasetRef:
+    name: str
+    version: str
+    sha256: str
+    path: str
+    license: str
+    provenance: str
+    total_examples: int
+    train_examples: int
+    test_examples: int
+
+
+@dataclass(frozen=True, slots=True)
+class RunRecord:
+    """Everything needed to reproduce and audit one method's result."""
+
+    run_id: str
+    problem_slug: str
+    benchmark_definition_version: str
+    method_id: str
+    method_name: str
+    method_class: str
+    complexity_rank: int
+    implementation_version: str
+    provider: str | None
+    model_name: str | None
+    model_version: str | None
+    prompt_version: str | None
+    dataset: DatasetRef
+    code_commit_sha: str
+    seed: int
+    runtime: dict[str, str]
+    started_at: str
+    completed_at: str
+    metric_definition: str
+    metric_definition_version: str
+    latency_definition: str
+    result_state: str
+    cost_state: str
+    cost_model: dict[str, object]
+    accuracy: float
+    macro_f1: float
+    latency_p50_ms: float
+    latency_p95_ms: float
+    latency_mean_ms: float
+    cost_per_1k_usd: float
+    deterministic: bool
+    auditable: bool
+    sample_count: int
+    correct: int
+    per_class: list[dict[str, object]]
+    confusion: dict[str, dict[str, int]]
+    raw_artifact_uri: str
+    notes: str
+    limitations: list[str]
+
+
+def _git_sha() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=Path(__file__).resolve().parents[2],
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # A run outside a checkout is still valid; the record says so rather
+        # than carrying a fabricated SHA.
+        return "unknown"
+
+
+def _runtime() -> dict[str, str]:
+    return {
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "processor": platform.processor() or "unknown",
+        "implementation": platform.python_implementation(),
+    }
+
+
+def load_dataset(slug: str) -> tuple[list[Example], list[Example], DatasetRef]:
+    """Read the on-disk dataset and verify its checksum."""
+    from app.benchmarks.datasets.support_ticket_routing import generate as dataset_module
+
+    if slug != "support-ticket-routing":
+        raise KeyError(f"No dataset loader registered for {slug!r}")
+
+    path = dataset_module.DATASET_PATH
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Dataset missing at {path}. Regenerate with `python -m {dataset_module.__name__}`."
+        )
+    payload = path.read_text(encoding="utf-8")
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    train: list[Example] = []
+    test: list[Example] = []
+    for line in payload.splitlines():
+        row = json.loads(line)
+        example = Example(example_id=row["example_id"], text=row["text"], label=row["label"])
+        (train if row["split"] == "train" else test).append(example)
+
+    reference = DatasetRef(
+        name=dataset_module.DATASET_NAME,
+        version=dataset_module.DATASET_VERSION,
+        sha256=digest,
+        path=_artifact_uri(path),
+        license="CC0-1.0 (synthetic, generated by this repository)",
+        provenance=(
+            "Synthetic. Generated deterministically by "
+            f"{dataset_module.__name__} at seed {dataset_module.SEED}, "
+            f"generator version {dataset_module.GENERATOR_VERSION}. "
+            "Not sampled from production support traffic."
+        ),
+        total_examples=len(train) + len(test),
+        train_examples=len(train),
+        test_examples=len(test),
+    )
+    return train, test, reference
+
+
+def run_method(
+    slug: str,
+    method_id: str,
+    *,
+    seed: int = 20260830,
+    runs_root: Path | None = None,
+) -> RunRecord:
+    """Fit, time, score, and persist one method against one dataset version."""
+    definition = get_benchmark(slug)
+    if method_id not in definition.methods:
+        raise KeyError(f"Method {method_id!r} is not registered for {slug!r}")
+
+    train, test, dataset = load_dataset(slug)
+    labels = tuple(sorted({example.label for example in train + test}))
+
+    method: BenchmarkMethod = definition.methods[method_id]()
+    metadata = method.metadata()
+
+    started_at = datetime.now(UTC)
+    method.setup(MethodConfig(seed=seed, training_examples=tuple(train), labels=labels))
+
+    # Warm up so the first timed call does not absorb import and cache costs.
+    for example in test[:WARMUP_EXAMPLES]:
+        method.predict([example])
+
+    predictions: list[str] = []
+    latencies_ns: list[int] = []
+    for example in test:
+        start = time.perf_counter_ns()
+        predicted = method.predict([example])
+        latencies_ns.append(time.perf_counter_ns() - start)
+        predictions.append(predicted[0])
+    completed_at = datetime.now(UTC)
+
+    scores: Scores = score([example.label for example in test], predictions, latencies_ns, labels)
+
+    run_id = f"{slug}--{method_id}--{started_at.strftime('%Y%m%dT%H%M%SZ')}"
+    run_dir = (runs_root or RUNS_ROOT) / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    # Raw outputs land first; the aggregate is derived from what is on disk.
+    artifact = run_dir / "predictions.jsonl"
+    artifact.write_text(
+        "".join(
+            json.dumps(
+                {
+                    "example_id": example.example_id,
+                    "gold": example.label,
+                    "predicted": predicted,
+                    "correct": example.label == predicted,
+                    "latency_ns": latency,
+                },
+                sort_keys=True,
+            )
+            + "\n"
+            for example, predicted, latency in zip(test, predictions, latencies_ns, strict=True)
+        ),
+        encoding="utf-8",
+    )
+
+    record = RunRecord(
+        run_id=run_id,
+        problem_slug=slug,
+        benchmark_definition_version=definition.definition_version,
+        method_id=metadata.method_id,
+        method_name=metadata.name,
+        method_class=metadata.method_class,
+        complexity_rank=metadata.complexity_rank,
+        implementation_version=metadata.implementation_version,
+        provider=metadata.provider,
+        model_name=metadata.model_name,
+        model_version=metadata.model_version,
+        prompt_version=metadata.prompt_version,
+        dataset=dataset,
+        code_commit_sha=_git_sha(),
+        seed=seed,
+        runtime=_runtime(),
+        started_at=started_at.isoformat(),
+        completed_at=completed_at.isoformat(),
+        metric_definition=METRIC_DEFINITION,
+        metric_definition_version=METRIC_DEFINITION_VERSION,
+        latency_definition=LATENCY_DEFINITION,
+        result_state="MEASURED",
+        # Cost is derived from measured latency plus a rate assumption, which
+        # makes it ESTIMATED even though the latency behind it is MEASURED.
+        cost_state="ESTIMATED",
+        cost_model=asdict(metadata.cost_model),
+        accuracy=round(scores.accuracy, 4),
+        macro_f1=round(scores.macro_f1, 4),
+        latency_p50_ms=round(scores.latency_p50_ms, 4),
+        latency_p95_ms=round(scores.latency_p95_ms, 4),
+        latency_mean_ms=round(scores.latency_mean_ms, 4),
+        cost_per_1k_usd=round(metadata.cost_model.cost_per_1k(scores.latency_p50_ms), 6),
+        deterministic=metadata.deterministic,
+        auditable=metadata.auditable,
+        sample_count=scores.sample_count,
+        correct=scores.correct,
+        per_class=[asdict(entry) for entry in scores.per_class],
+        confusion=scores.confusion,
+        raw_artifact_uri=_artifact_uri(artifact),
+        notes=metadata.notes,
+        limitations=[
+            "The dataset is synthetic, so difficulty reflects its generator rather "
+            "than production support traffic.",
+            "Only rules and traditional ML are implemented; no small-model or "
+            "frontier-LLM result exists for this problem.",
+            "Cost is projected from measured latency and a published compute rate, "
+            "not from a billed invoice.",
+        ],
+    )
+
+    (run_dir / "run.json").write_text(
+        json.dumps(asdict(record), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    logger.info(
+        "Benchmark run complete",
+        extra={
+            "run_id": run_id,
+            "method_id": method_id,
+            "accuracy": record.accuracy,
+            "latency_p50_ms": record.latency_p50_ms,
+        },
+    )
+    return record
+
+
+def run_all(slug: str, *, seed: int = 20260830, runs_root: Path | None = None) -> list[RunRecord]:
+    """Run every registered method for a problem against the same dataset version."""
+    definition = get_benchmark(slug)
+    return [
+        run_method(slug, method_id, seed=seed, runs_root=runs_root)
+        for method_id in definition.methods
+    ]
+
+
+def publish_run(record: RunRecord, published_root: Path | None = None) -> Path:
+    """Promote a run to the citable record set.
+
+    Copies both the aggregate and its raw predictions, so a published number can
+    always be recomputed from the artifact that produced it.
+    """
+    import shutil
+
+    root = (published_root or PUBLISHED_ROOT) / record.problem_slug
+    root.mkdir(parents=True, exist_ok=True)
+
+    (root / f"{record.method_id}.run.json").write_text(
+        json.dumps(asdict(record), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    # raw_artifact_uri may be absolute for a run made outside the checkout.
+    source = Path(record.raw_artifact_uri)
+    if not source.is_absolute():
+        source = BACKEND_ROOT / source
+    if source.is_file():
+        shutil.copyfile(source, root / f"{record.method_id}.predictions.jsonl")
+    return root

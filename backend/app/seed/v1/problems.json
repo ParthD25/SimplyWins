@@ -1,0 +1,721 @@
+{
+  "seed_version": "0.1.0",
+  "data_state": "DEMO",
+  "notice": "Every figure in this file is illustrative demo data, not a measured benchmark result. It exists so the API and frontend have a realistic shape to develop against. Nothing here may be presented as evidence. Promoting any method to MEASURED requires a reproducible benchmark run carrying the metadata required by section 4 of PROJECT_STANDARD.md.",
+  "problems": [
+    {
+      "slug": "invoice-field-extraction",
+      "title": "Invoice Field Extraction",
+      "category": "Document Processing",
+      "description": "Extract vendor, invoice number, date, subtotal, tax, and total from standardized business invoices.",
+      "decision_question": "Do standardized invoices need a frontier LLM, or can OCR plus deterministic rules clear the quality bar?",
+      "rationale": "When document structure is stable, a deterministic pipeline can be cheaper, faster, and easier to audit while still meeting the required quality target.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic invoice benchmark",
+        "version": "0.1.0",
+        "sample_count_label": "1,000 documents",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 95,
+        "max_latency_ms": 800,
+        "auditability_required": true,
+        "monthly_volume": 100000
+      },
+      "methods": [
+        {
+          "method_id": "invoice-rules",
+          "name": "Rules + OCR Pipeline",
+          "short_name": "Rules + OCR",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Best fit for stable invoice layouts and structured fields.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 96.2,
+            "latency_p50_ms": 120,
+            "cost_per_1k": 0.12,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "invoice-ml",
+          "name": "Traditional ML (XGBoost)",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Handles moderate layout variation but adds training and feature maintenance.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 95.1,
+            "latency_p50_ms": 310,
+            "cost_per_1k": 0.48,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "invoice-small",
+          "name": "Small Vision-Language Model",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Flexible, but misses the current quality threshold.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 93.8,
+            "latency_p50_ms": 620,
+            "cost_per_1k": 2.15,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "invoice-frontier",
+          "name": "Frontier Multimodal LLM",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Highest raw accuracy, but cost and latency exceed this use case.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 97.6,
+            "latency_p50_ms": 1250,
+            "cost_per_1k": 18.9,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "messy-receipt-extraction",
+      "title": "Messy Receipt Extraction",
+      "category": "Document Processing",
+      "description": "Recover merchant, date, total, tax, and category from photos of receipts with inconsistent layouts.",
+      "decision_question": "At what level of visual variability does a learned model become worth the additional cost?",
+      "rationale": "The lowest-complexity method that clears the target is a small VLM; a frontier model adds quality but not enough value to justify the extra cost.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic + public-format receipt mix",
+        "version": "0.1.0",
+        "sample_count_label": "1,500 images",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 93,
+        "max_latency_ms": 1600,
+        "auditability_required": false,
+        "monthly_volume": 40000
+      },
+      "methods": [
+        {
+          "method_id": "receipt-rules",
+          "name": "OCR + Regex Rules",
+          "short_name": "Rules + OCR",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Breaks quickly as visual layout and merchant formatting vary.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 82.5,
+            "latency_p50_ms": 145,
+            "cost_per_1k": 0.15,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "receipt-ml",
+          "name": "Traditional ML + Layout Features",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Strong baseline but still under the quality target.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 90.8,
+            "latency_p50_ms": 340,
+            "cost_per_1k": 0.61,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "receipt-small",
+          "name": "Small Vision-Language Model",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "First method that clears the target at reasonable cost.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 94.1,
+            "latency_p50_ms": 710,
+            "cost_per_1k": 2.45,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "receipt-frontier",
+          "name": "Frontier Multimodal LLM",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Best score, but the small model already meets requirements.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 96.4,
+            "latency_p50_ms": 1380,
+            "cost_per_1k": 19.4,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "support-ticket-routing",
+      "title": "Support Ticket Routing",
+      "category": "Classification",
+      "description": "Assign inbound support requests to Billing, Technical, Account, Shipping, or Other.",
+      "decision_question": "Can simple lexical signals route most tickets reliably enough without an LLM?",
+      "rationale": "Traditional text classification solves this job cleanly. The LLM approaches are unnecessary under the current business constraints.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic support ticket set",
+        "version": "0.1.0",
+        "sample_count_label": "5,000 tickets",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 92,
+        "max_latency_ms": 500,
+        "auditability_required": true,
+        "monthly_volume": 250000
+      },
+      "methods": [
+        {
+          "method_id": "ticket-rules",
+          "name": "Keyword + Priority Rules",
+          "short_name": "Rules",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Nearly clears the bar but struggles with ambiguous language.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 91.7,
+            "latency_p50_ms": 5,
+            "cost_per_1k": 0.01,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "ticket-ml",
+          "name": "TF-IDF + Logistic Regression",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Clears the threshold with very low operating cost.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 94.6,
+            "latency_p50_ms": 18,
+            "cost_per_1k": 0.03,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "ticket-small",
+          "name": "Small Language Model",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Marginal quality gain for much higher complexity.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 95.2,
+            "latency_p50_ms": 240,
+            "cost_per_1k": 0.92,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "ticket-frontier",
+          "name": "Frontier LLM",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Exceeds the default latency constraint.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 96,
+            "latency_p50_ms": 840,
+            "cost_per_1k": 6.7,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "duplicate-record-detection",
+      "title": "Duplicate Record Detection",
+      "category": "Data Matching",
+      "description": "Identify duplicate customer records when names, emails, addresses, and phone numbers are inconsistent.",
+      "decision_question": "Can blocking and fuzzy matching outperform semantic AI on a high-volume identity-resolution task?",
+      "rationale": "A carefully designed deterministic matcher already clears the requirement and is much easier to inspect at scale.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic CRM duplicate set",
+        "version": "0.1.0",
+        "sample_count_label": "20,000 record pairs",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 96,
+        "max_latency_ms": 250,
+        "auditability_required": true,
+        "monthly_volume": 1000000
+      },
+      "methods": [
+        {
+          "method_id": "dupe-rules",
+          "name": "Blocking + Fuzzy Match",
+          "short_name": "Rules + Fuzzy",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Strong for structured identifiers and explainable matching rules.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 96.8,
+            "latency_p50_ms": 14,
+            "cost_per_1k": 0.02,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "dupe-ml",
+          "name": "Gradient Boosted Pair Classifier",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Higher recall on noisier records, but not required by default.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 97.4,
+            "latency_p50_ms": 30,
+            "cost_per_1k": 0.07,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "dupe-small",
+          "name": "Embedding Similarity",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Useful for free-form text, weaker for this structured task.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 95.9,
+            "latency_p50_ms": 90,
+            "cost_per_1k": 0.34,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "dupe-frontier",
+          "name": "Frontier LLM Pair Judge",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Too expensive and slow for million-record monthly volume.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 97.8,
+            "latency_p50_ms": 920,
+            "cost_per_1k": 9.4,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "form-validation",
+      "title": "Form Validation",
+      "category": "Classification",
+      "description": "Determine whether a submitted form is complete and internally consistent before it enters a workflow.",
+      "decision_question": "Should form validation be AI-powered when most failures are explicit business rules?",
+      "rationale": "This is a strong example of where AI is overkill: explicit validation rules are more accurate, cheaper, faster, and fully auditable.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic application forms",
+        "version": "0.1.0",
+        "sample_count_label": "10,000 submissions",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 99,
+        "max_latency_ms": 150,
+        "auditability_required": true,
+        "monthly_volume": 500000
+      },
+      "methods": [
+        {
+          "method_id": "form-rules",
+          "name": "Schema + Business Rules",
+          "short_name": "Rules",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Directly expresses required fields and cross-field constraints.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 99.7,
+            "latency_p50_ms": 3,
+            "cost_per_1k": 0.01,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "form-ml",
+          "name": "Anomaly Classifier",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Useful for unknown anomalies, but weaker on explicit validity rules.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 97.9,
+            "latency_p50_ms": 15,
+            "cost_per_1k": 0.04,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "form-small",
+          "name": "Small Language Model",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Adds uncertainty to a mostly deterministic job.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 98.4,
+            "latency_p50_ms": 190,
+            "cost_per_1k": 0.77,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "form-frontier",
+          "name": "Frontier LLM Validator",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Does not beat a schema validator on this task.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 99.1,
+            "latency_p50_ms": 680,
+            "cost_per_1k": 5.8,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "sentiment-classification",
+      "title": "Sentiment Classification",
+      "category": "Text Understanding",
+      "description": "Classify short customer feedback as positive, neutral, or negative across informal language.",
+      "decision_question": "Does semantic nuance justify a model, and if so, how large does it need to be?",
+      "rationale": "This task benefits from learned semantics, but a small model is sufficient; the frontier model is unnecessary.",
+      "benchmark_definition_version": "0.1.0",
+      "status": "DEMO",
+      "dataset": {
+        "name": "Synthetic customer feedback set",
+        "version": "0.1.0",
+        "sample_count_label": "8,000 comments",
+        "sha256": null,
+        "license": null,
+        "source_url": null,
+        "provenance_notes": "Illustrative demo definition. No dataset has been built or hashed yet; provenance fields are required before any result may be promoted to MEASURED."
+      },
+      "default_requirements": {
+        "min_accuracy": 90,
+        "max_latency_ms": 700,
+        "auditability_required": false,
+        "monthly_volume": 120000
+      },
+      "methods": [
+        {
+          "method_id": "sentiment-rules",
+          "name": "Lexicon Rules",
+          "short_name": "Rules",
+          "method_class": "rules",
+          "complexity_rank": 1,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Fails on negation, sarcasm, and domain-specific language.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 76.4,
+            "latency_p50_ms": 2,
+            "cost_per_1k": 0.01,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "sentiment-ml",
+          "name": "TF-IDF + Linear SVM",
+          "short_name": "Traditional ML",
+          "method_class": "traditional-ml",
+          "complexity_rank": 2,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Close to the quality target but not quite enough.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 89.5,
+            "latency_p50_ms": 12,
+            "cost_per_1k": 0.03,
+            "deterministic": true,
+            "auditable": true,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "sentiment-small",
+          "name": "Fine-Tuned Small Transformer",
+          "short_name": "Small Model",
+          "method_class": "small-model",
+          "complexity_rank": 3,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Clears the target with low enough cost and latency.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 93.2,
+            "latency_p50_ms": 75,
+            "cost_per_1k": 0.27,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        },
+        {
+          "method_id": "sentiment-frontier",
+          "name": "Frontier LLM",
+          "short_name": "Frontier LLM",
+          "method_class": "frontier-llm",
+          "complexity_rank": 4,
+          "implementation_version": "0.1.0",
+          "provider": null,
+          "model_name": null,
+          "model_version": null,
+          "notes": "Marginal gain while missing the default latency target.",
+          "result": {
+            "result_state": "DEMO",
+            "accuracy": 94.1,
+            "latency_p50_ms": 720,
+            "cost_per_1k": 4.9,
+            "deterministic": false,
+            "auditable": false,
+            "metric_definition_version": "0.1.0",
+            "raw_artifact_uri": null,
+            "measured_at": null
+          }
+        }
+      ]
+    }
+  ]
+}
