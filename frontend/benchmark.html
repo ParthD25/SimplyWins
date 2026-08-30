@@ -1,6 +1,133 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Benchmark — SimplestWins</title><link rel="stylesheet" href="assets/styles.css"></head><body><div class="shell"><header class="mobile-header"><div class="brand"><span class="brand-mark">✓</span><span>SimplestWins</span></div><button data-nav-toggle aria-label="Open navigation">☰</button></header><aside class="sidebar"><div class="sidebar-brand"><a class="brand" href="index.html"><span class="brand-mark">✓</span><span>SimplestWins</span></a></div><nav class="nav"><a href="index.html">Home</a><a class="active" href="benchmarks.html">Benchmarks</a><a href="methodology.html">Methodology</a></nav><div class="side-label">Project</div><nav class="nav"><a href="https://github.com/ParthD25" target="_blank" rel="noreferrer">GitHub profile ↗</a></nav><div class="side-footer"><strong>Interactive decision demo</strong><p>Change the requirement sliders and watch the recommended architecture update.</p></div></aside><button class="sidebar-scrim" hidden aria-label="Close navigation"></button><main class="main"><div class="benchmark-page"><div class="breadcrumb"><a href="benchmarks.html">← All benchmarks</a><span>/</span><span data-category></span></div><header class="benchmark-header"><div><div class="header-meta"><span data-category></span> · Demo benchmark</div><h1 data-title></h1><p data-description></p></div><div class="benchmark-question"><span>Decision question</span><strong data-question></strong></div></header>
-<section class="recommendation-banner"><div class="rec-icon">✓</div><div class="rec-copy"><span data-rec-label></span><h2 data-rec-name></h2><p data-rec-reason></p></div><div class="rec-metrics"><div><span>Accuracy</span><strong data-rec-accuracy></strong></div><div><span>Latency</span><strong data-rec-latency></strong></div><div><span>Est. monthly</span><strong data-rec-monthly></strong></div></div></section>
-<section class="panel"><div class="panel-head"><div><p class="eyebrow">Decision constraints</p><h2>Define what “good enough” means</h2></div><button class="text-btn" data-reset>↺ Reset</button></div><div class="requirement-grid"><label class="field"><span>Minimum accuracy</span><strong data-accuracy-value></strong><input data-accuracy type="range" min="75" max="99" step="1"></label><label class="field"><span>Maximum latency</span><strong data-latency-value></strong><input data-latency type="range" min="50" max="2000" step="50"></label><label class="field"><span>Monthly volume</span><strong data-volume-value></strong><input data-volume type="range" min="1000" max="1000000" step="1000"></label><label class="switch"><span><span>Auditability required</span><small>Reject methods without inspectable, deterministic outputs.</small></span><input data-audit type="checkbox" aria-label="Auditability required"></label></div></section>
-<section class="panel"><div class="chart-topline"><div><p class="eyebrow">Cost vs. quality</p><h2>Which method clears the requirement with the least complexity?</h2></div><div class="chart-summary" data-chart-summary></div></div><div class="chart-scroll"><div class="scatter" data-scatter></div></div><div class="chart-legend"><span><i class="legend-dot l-rules"></i>Rules</span><span><i class="legend-dot l-ml"></i>Traditional ML</span><span><i class="legend-dot l-small"></i>Small Model</span><span><i class="legend-dot l-frontier"></i>Frontier LLM</span></div></section>
-<section class="panel"><div class="panel-head"><div><p class="eyebrow">Method comparison</p><h2>See why the winner won.</h2></div></div><div class="table-wrap"><table class="results-table"><thead><tr><th>Method</th><th>Accuracy</th><th>Cost / 1K</th><th>Latency</th><th>Auditable</th><th>Meets requirements</th></tr></thead><tbody data-results-body></tbody></table></div></section>
-<section class="evidence-strip"><div><span>Dataset</span><strong data-dataset></strong><small data-dataset-size></small></div><div><span>Status</span><strong>Illustrative frontend benchmark</strong><small>Replace with measured runs from the backend.</small></div><div><span>Decision rationale</span><strong data-rationale></strong></div></section></div><footer class="footer-note">SimplestWins · interactive benchmark</footer></main></div><script type="module">import{setupMobileNav,setupBenchmarkPage}from'./assets/app.js';setupMobileNav();setupBenchmarkPage();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Benchmark — SimplestWins</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="shell">
+<header class="mobile-header"><div class="brand"><span class="brand-mark">✓</span><span>SimplestWins</span></div><button data-nav-toggle aria-label="Open navigation">☰</button></header>
+
+<aside class="sidebar">
+  <div class="sidebar-brand"><a class="brand" href="index.html"><span class="brand-mark">✓</span><span>SimplestWins</span></a></div>
+  <nav class="nav" aria-label="Main">
+    <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Home</a>
+    <a class="active" href="benchmarks.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 13v4M12 8v9M16 11v6"/></svg>Benchmarks</a>
+    <a href="methodology.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M14 4v6h6M8 14h8M8 17h5"/></svg>Methodology</a>
+  </nav>
+  <div class="side-label">Project</div>
+  <nav class="nav" aria-label="Project links">
+    <a href="https://github.com/ParthD25" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 19c-4 1.4-4-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>GitHub profile ↗</a>
+  </nav>
+  <div class="side-footer"><strong>Interactive decision demo</strong><p>Change the requirements and watch the recommended architecture update.</p></div>
+</aside>
+<button class="sidebar-scrim" hidden aria-label="Close navigation"></button>
+
+<main class="main">
+<div class="workspace">
+  <div class="work-main">
+
+    <div class="topbar">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="benchmarks.html">Benchmarks</a><span aria-hidden="true">/</span>
+        <span data-category></span><span aria-hidden="true">/</span>
+        <span class="crumb-current" data-title></span>
+      </nav>
+      <div class="topbar-actions">
+        <button class="btn-sm" data-share><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 16V4M8 8l4-4 4 4"/></svg>Share</button>
+        <button class="btn-sm accent" data-run title="Runs when the benchmark runner ships"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 4l14 8-14 8z"/></svg>Run Benchmark</button>
+      </div>
+    </div>
+
+    <header class="bench-head">
+      <div class="head-row">
+        <div>
+          <h1 data-title></h1>
+          <p data-description></p>
+        </div>
+        <span class="state-pill" title="Illustrative figures, not measured results">Demo data</span>
+      </div>
+    </header>
+
+    <div class="req-bar">
+      <span class="req-bar-label">Requirements</span>
+      <div class="req-chips" data-req-chips></div>
+      <div class="req-actions">
+        <button class="btn-sm" data-reset>Reset</button>
+        <button class="btn-sm" data-edit aria-expanded="false" aria-controls="req-editor">Edit</button>
+      </div>
+    </div>
+
+    <section class="req-editor" id="req-editor" hidden>
+      <div class="req-editor-head">
+        <h2>Define what “good enough” means</h2>
+        <button class="text-btn" data-close-edit>Done</button>
+      </div>
+      <div class="requirement-grid">
+        <label class="field"><span>Minimum accuracy</span><strong data-accuracy-value></strong><input data-accuracy type="range" min="75" max="99" step="1"></label>
+        <label class="field"><span>Maximum latency</span><strong data-latency-value></strong><input data-latency type="range" min="50" max="2000" step="50"></label>
+        <label class="field"><span>Monthly volume</span><strong data-volume-value></strong><input data-volume type="range" min="1000" max="1000000" step="1000"></label>
+        <label class="switch"><span><span>Auditability required</span><small>Reject methods without inspectable, deterministic outputs.</small></span><input data-audit type="checkbox" aria-label="Auditability required"></label>
+      </div>
+    </section>
+
+    <div class="kpi-strip" data-kpis></div>
+
+    <section class="panel">
+      <div class="panel-bar">
+        <h2>Benchmark Results</h2>
+        <div><span class="view-label">View:</span><span class="seg"><button data-view="chart" aria-pressed="true">Pareto Frontier</button><button data-view="table" aria-pressed="false">Table</button></span></div>
+      </div>
+      <div data-chart-view>
+        <div class="chart-row">
+          <div class="chart-scroll"><div class="scatter" data-scatter></div></div>
+          <div class="chart-legend-col" data-chart-legend></div>
+        </div>
+      </div>
+      <div class="table-wrap" data-chart-table hidden></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-bar"><h2>Detailed Comparison</h2></div>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead><tr><th>Method</th><th>Accuracy</th><th>Cost / 1K</th><th>Median latency</th><th>Auditable</th><th>Meets requirements</th></tr></thead>
+          <tbody data-results-body></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="evidence-strip">
+      <div><span>Dataset</span><strong data-dataset></strong><small data-dataset-size></small></div>
+      <div><span>Status</span><strong>Illustrative frontend benchmark</strong><small>Replace with measured runs from the backend.</small></div>
+      <div><span>Decision rationale</span><strong data-rationale></strong></div>
+    </section>
+  </div>
+
+  <aside class="rail" aria-label="Context">
+    <div class="rail-card">
+      <div class="rail-head"><h2>Decision question</h2></div>
+      <p class="rail-note" data-question></p>
+    </div>
+    <div class="rail-card">
+      <div class="rail-head"><h2>Problem Categories</h2><a href="benchmarks.html">View all →</a></div>
+      <div data-categories></div>
+    </div>
+    <div class="rail-card">
+      <div class="rail-head"><h2>Current Picks</h2></div>
+      <div data-top-picks></div>
+    </div>
+    <div class="rail-card">
+      <div class="rail-head"><h2>Data state</h2></div>
+      <p class="rail-note"><strong>All figures are demo data.</strong> They illustrate how the decision rule behaves and are not measured benchmark results. Measured runs arrive with the Python benchmark runner.</p>
+    </div>
+  </aside>
+</div>
+<footer class="footer-note">SimplestWins · interactive benchmark</footer>
+</main>
+</div>
+<script type="module">import{setupMobileNav,setupBenchmarkPage}from'./assets/app.js';setupMobileNav();setupBenchmarkPage();</script>
+</body>
+</html>
