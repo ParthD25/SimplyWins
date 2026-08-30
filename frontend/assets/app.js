@@ -1,4 +1,5 @@
-import { benchmarkProblems, getProblem } from './data.js';
+import { benchmarkProblems } from './data.js';
+import { loadProblem, loadProblems, SOURCE, isConfigured } from './api.js';
 
 export function methodMeetsRequirements(method, requirements) {
   return method.accuracy >= requirements.minAccuracy &&
@@ -88,9 +89,16 @@ function problemIcon(category) {
   return icons[category] ?? '•';
 }
 
-export function renderProblemCards(container, problems = benchmarkProblems) {
+export function renderProblemCards(container, problems = activeProblems) {
   container.innerHTML = problems.map((problem) => {
-    const recommendation = getRecommendation(problem.results, problem.requirements);
+    // A summary carries its counts directly; a bundled problem computes them.
+    const recommendation = problem.results.length
+      ? getRecommendation(problem.results, problem.requirements)
+      : {
+          winner: null,
+          measuredCount: problem.measuredCount ?? 0,
+          methodCount: problem.methodCount ?? 0,
+        };
     return `<a class="problem-card" href="benchmark.html?problem=${problem.slug}">
       <div class="problem-card-top"><span class="category-icon">${problemIcon(problem.category)}</span><span class="status-chip status-demo">Demo results</span></div>
       <div><div class="problem-category">${problem.category}</div><h3>${problem.title}</h3><p>${problem.description}</p></div>
@@ -101,18 +109,42 @@ export function renderProblemCards(container, problems = benchmarkProblems) {
   }).join('');
 }
 
-export function setupLibrary() {
+let activeProblems = benchmarkProblems;
+
+/* Says where the numbers came from. A visitor reading them deserves to know
+   whether the backend served them or the page fell back to its bundled copy. */
+function renderSourceNote(problems) {
+  const host = document.querySelector('[data-source-note]');
+  if (!host) return;
+  const bundled = problems.some((problem) => problem.source === SOURCE.BUNDLED);
+  if (!bundled) {
+    host.hidden = true;
+    return;
+  }
+  host.hidden = false;
+  host.textContent = isConfigured()
+    ? 'Backend unreachable — showing the bundled copy of the benchmark data.'
+    : 'Static preview: showing bundled benchmark data. No backend is configured.';
+}
+
+export async function setupLibrary() {
+  activeProblems = await loadProblems();
+  renderSourceNote(activeProblems);
+  setupLibraryWith(activeProblems);
+}
+
+function setupLibraryWith(problems) {
   const grid = document.querySelector('[data-problem-grid]');
   const input = document.querySelector('[data-search]');
   const tabs = [...document.querySelectorAll('[data-category]')];
   if (!grid || !input) return;
   // A ?category= link (from the benchmark page rail) preselects that filter.
   const requested = new URLSearchParams(location.search).get('category');
-  const known = [...new Set(benchmarkProblems.map((problem) => problem.category))];
+  const known = [...new Set(problems.map((problem) => problem.category))];
   let category = known.includes(requested) ? requested : 'All';
   const update = () => {
     const query = input.value.toLowerCase().trim();
-    const filtered = benchmarkProblems.filter((problem) => (category === 'All' || problem.category === category) && (!query || `${problem.title} ${problem.description} ${problem.category}`.toLowerCase().includes(query)));
+    const filtered = problems.filter((problem) => (category === 'All' || problem.category === category) && (!query || `${problem.title} ${problem.description} ${problem.category}`.toLowerCase().includes(query)));
     renderProblemCards(grid, filtered);
     const count = document.querySelector('[data-result-count]');
     if (count) count.textContent = filtered.length;
@@ -139,7 +171,19 @@ const METHOD_COLORS = {
   'frontier-llm': '#e24a4a',
 };
 
-const money = (value) => `$${value.toFixed(2)}`;
+/* Sub-cent costs are real for local methods, so a flat two decimals would
+   print "$0.00" for a figure that is not zero. */
+const money = (value) => {
+  if (value === 0) return '$0.00';
+  // Number() trims the trailing zero toPrecision leaves on e.g. 0.0000010.
+  if (value < 0.01) return `$${Number(value.toPrecision(2))}`;
+  return `$${value.toFixed(2)}`;
+};
+
+/* Measured local methods run in fractions of a millisecond; rounding those to
+   an integer would display a real 0.11ms as "0ms". */
+const formatLatency = (ms) =>
+  (ms < 10 ? `${Number(ms.toFixed(2))}ms` : `${Math.round(ms)}ms`);
 const compact = (value) => Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
 const monthlyCost = (method, requirements) => method.costPer1k * (requirements.monthlyVolume / 1000);
 
@@ -183,7 +227,7 @@ function renderScatter(problem, requirements, recommendation) {
       const cx = x(method.costPer1k).toFixed(1);
       const cy = y(method.accuracy).toFixed(1);
       const ring = isWinner ? `<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#15966b" stroke-width="2"/>` : '';
-      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${method.latencyMs}ms. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
+      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${formatLatency(method.latencyMs)}. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
     }).join('')}
     <text x="${m.left + pw / 2}" y="${H - 8}" text-anchor="middle" class="axis-title">Cost per 1K tasks (USD, log scale)</text>
     <text x="14" y="${m.top + ph / 2}" text-anchor="middle" class="axis-title" transform="rotate(-90 14 ${m.top + ph / 2})">Accuracy (%)</text>
@@ -217,7 +261,7 @@ function renderChartTable(problem, requirements) {
       const evidence = countsAsEvidence(method);
       return `<tr class="${evidence ? '' : 'demo-row'}"><td><span class="method-badge method-${method.kind}">${method.shortName}</span></td>
         <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
-        <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
+        <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>
         <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -243,7 +287,7 @@ function renderKpis(problem, requirements, recommendation) {
     <div class="kpi"><span>Meets Requirements</span><strong class="${complete ? 'kpi-yes' : 'kpi-no'}">${complete ? '✓ Yes' : '—'}</strong></div>
     <div class="kpi"><span>Accuracy (Best)</span><strong>${value((w) => `${w.accuracy.toFixed(1)}%`)}</strong></div>
     <div class="kpi"><span>Est. Monthly Cost</span><strong>${value((w) => money(monthlyCost(w, requirements)))}</strong><small>at ${compact(requirements.monthlyVolume)} / month</small></div>
-    <div class="kpi"><span>Est. Latency (Best)</span><strong>${value((w) => `${w.latencyMs}ms`)}</strong></div>`;
+    <div class="kpi"><span>Est. Latency (Best)</span><strong>${value((w) => `${formatLatency(w.latencyMs)}`)}</strong></div>`;
 }
 
 /* States the evidence position before any numbers are read. Section 3.1
@@ -266,7 +310,7 @@ function renderRequirementChips(requirements) {
   if (!host) return;
   host.innerHTML = `
     <span class="req-chip">Accuracy ≥<strong>${requirements.minAccuracy}%</strong></span>
-    <span class="req-chip">Max latency ≤<strong>${requirements.maxLatencyMs}ms</strong></span>
+    <span class="req-chip">Max latency ≤<strong>${formatLatency(requirements.maxLatencyMs)}</strong></span>
     <span class="req-chip${requirements.auditabilityRequired ? '' : ' off'}">Auditability<strong>${requirements.auditabilityRequired ? 'Required' : 'Not required'}</strong></span>
     <span class="req-chip">Volume<strong>${compact(requirements.monthlyVolume)} / month</strong></span>`;
 }
@@ -282,7 +326,7 @@ function renderTable(problem, requirements, recommendation) {
     return `<tr class="${rowClass}">
       <td><div class="method-cell"><span class="method-badge method-${method.kind}">${method.shortName}</span><div><strong>${method.name}</strong><small>${method.notes}</small></div></div></td>
       <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
-      <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
+      <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${formatLatency(method.latencyMs)}</td>
       <td class="${method.auditable ? 'pass-label' : 'fail-label'}">${method.auditable ? '✓ Yes' : '× No'}</td>
       <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td>
     </tr>`;
@@ -295,7 +339,7 @@ function renderRail(problem) {
   const categories = document.querySelector('[data-categories]');
   if (categories) {
     const counts = new Map();
-    benchmarkProblems.forEach((entry) => counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1));
+    activeProblems.forEach((entry) => counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1));
     categories.innerHTML = [...counts.entries()].map(([category, count]) => `
       <a class="rail-item" href="benchmarks.html?category=${encodeURIComponent(category)}">
         <span class="rail-icon" aria-hidden="true">${problemIcon(category)}</span>
@@ -305,11 +349,17 @@ function renderRail(problem) {
 
   const picks = document.querySelector('[data-top-picks]');
   if (picks) {
-    picks.innerHTML = benchmarkProblems
+    picks.innerHTML = activeProblems
       .filter((entry) => entry.slug !== problem.slug)
       .slice(0, 3)
       .map((entry) => {
-        const pick = getRecommendation(entry.results, entry.requirements);
+        const pick = entry.results.length
+          ? getRecommendation(entry.results, entry.requirements)
+          : {
+              winner: null,
+              measuredCount: entry.measuredCount ?? 0,
+              methodCount: entry.methodCount ?? 0,
+            };
         const detail = pick.winner
           ? `→ <span class="rail-pick">${pick.winner.shortName}</span>`
           : `<span class="rail-incomplete">${pick.measuredCount} of ${pick.methodCount} measured</span>`;
@@ -321,9 +371,11 @@ function renderRail(problem) {
   }
 }
 
-export function setupBenchmarkPage() {
+export async function setupBenchmarkPage() {
   const params = new URLSearchParams(location.search);
-  const problem = getProblem(params.get('problem') || 'invoice-field-extraction');
+  const problem = await loadProblem(params.get('problem') || 'invoice-field-extraction');
+  activeProblems = await loadProblems();
+  renderSourceNote([problem]);
   let requirements = structuredClone(problem.requirements);
 
   document.title = `${problem.title} — SimplestWins`;
@@ -351,7 +403,7 @@ export function setupBenchmarkPage() {
     volume.value = requirements.monthlyVolume;
     audit.checked = requirements.auditabilityRequired;
     document.querySelector('[data-accuracy-value]').textContent = `${requirements.minAccuracy}%`;
-    document.querySelector('[data-latency-value]').textContent = `${requirements.maxLatencyMs} ms`;
+    document.querySelector('[data-latency-value]').textContent = `${formatLatency(requirements.maxLatencyMs)}`;
     document.querySelector('[data-volume-value]').textContent = compact(requirements.monthlyVolume);
   };
 

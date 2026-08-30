@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (tests, lint, types)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format
+        run: ruff format --check .
+
+      - name: Types
+        run: mypy app
+
+      - name: Migrations match models
+        # A model change without a migration reaches development but never
+        # production; this is what catches it.
+        run: |
+          alembic upgrade head
+          alembic check
+        env:
+          SIMPLESTWINS_DATABASE_URL: sqlite+pysqlite:///./ci.db
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Benchmark smoke test
+        # The runner is a deliverable, so a change that breaks it must fail CI
+        # rather than being discovered the next time someone runs a benchmark.
+        run: python -m app.benchmarks.cli run support-ticket-routing --method ticket-rules
+
+  frontend:
+    name: Frontend (syntax, render, accessibility)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Syntax check
+        run: for f in frontend/assets/*.js; do node --check "$f"; done
+
+      - name: Install Playwright
+        run: npm install --no-save playwright && npx playwright install --with-deps chromium
+
+      - name: Render checks
+        run: node ci/render-check.mjs

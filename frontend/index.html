@@ -10,4 +10,12 @@
 <section class="closing"><div><p class="eyebrow">Project thesis</p><h2>AI should earn its complexity.</h2></div><p>When two approaches both meet the requirement, SimplestWins favors the one that is easier to understand, cheaper to operate, faster to run, and simpler to maintain. The benchmark exists to make that tradeoff visible.</p><a class="btn secondary" href="methodology.html">See the decision standard →</a></section>
 <footer class="footer-note">SimplestWins frontend prototype · built to connect to a versioned Python benchmark API</footer>
 </main></div>
-<script type="module">import{setupMobileNav,renderProblemCards,benchmarkProblems}from'./assets/app.js';setupMobileNav();renderProblemCards(document.querySelector('[data-home-problems]'),benchmarkProblems.slice(0,3));</script></body></html>
+<script type="module">
+import { setupMobileNav, renderProblemCards } from './assets/app.js';
+import { loadProblems } from './assets/api.js';
+setupMobileNav();
+// The home page shows the same three problems the API serves, falling back to
+// the bundled copy when no backend is reachable.
+const problems = await loadProblems();
+renderProblemCards(document.querySelector('[data-home-problems]'), problems.slice(0, 3));
+</script></body></html>

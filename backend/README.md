@@ -39,7 +39,7 @@ The database is created and seeded on startup. Interactive API docs are at
 ## Test
 
 ```bash
-.venv/bin/python -m pytest          # 112 tests
+.venv/bin/python -m pytest          # 135 tests
 .venv/bin/ruff check .              # lint
 .venv/bin/ruff format --check .     # formatting
 .venv/bin/mypy app                  # strict type check
@@ -109,14 +109,40 @@ intended for deployment; only the URL changes:
 export SIMPLESTWINS_DATABASE_URL="postgresql+psycopg://user:pass@host/simplestwins"
 ```
 
-Tables are created with `Base.metadata.create_all`. That is adequate while the
-only data is regenerable seed data. **Alembic is required before the first
-schema change that has to preserve existing rows** — in practice, before the
-first measured benchmark run is stored.
+### Migrations
+
+Alembic reads the same `SIMPLESTWINS_DATABASE_URL` the app does, so a migration
+can never run against a different database than the service.
+
+```bash
+alembic upgrade head                              # apply
+alembic revision --autogenerate -m "what changed" # after a model change
+alembic check                                     # fail if models have drifted
+```
+
+`create_all` still builds the schema for local development and tests. A test
+asserts the two paths produce identical tables and columns, and another runs
+`alembic check`, so a model change that never got a migration fails CI rather
+than reaching production as a missing column.
 
 ## Seed data
 
-`app/seed/v1/problems.json` holds the six MVP problem definitions. The backend
+`app/seed/v2/problems.json` holds the six MVP problem definitions, with the
+methods that have been benchmarked promoted to `MEASURED`.
+
+Measured results reach the seed by a reproducible command, never by hand:
+
+```bash
+python -m app.seed.promote --from v1 --to v2
+```
+
+It reads `benchmarks/published/<slug>/*.run.json` and writes the next seed
+version with those methods carrying their run id, dataset checksum, raw
+artifact path and sample count. A method with no published run keeps its `DEMO`
+figures, which is why `support-ticket-routing` sits at 2 of 4 measured and
+still produces no recommendation.
+
+The original `app/seed/v1/problems.json` is kept as the all-`DEMO` baseline. The backend
 owns them from this phase onward; `frontend/assets/data.js` keeps its copy only
 so the static prototype stays viewable offline. The two were verified identical
 on every shared field at the time of migration.

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -116,6 +117,14 @@ def _to_orm(definition: SeedProblem) -> Problem:
                     auditable=method.result.auditable,
                     metric_definition_version=method.result.metric_definition_version,
                     raw_artifact_uri=method.result.raw_artifact_uri,
+                    cost_state=method.result.cost_state.value,
+                    sample_count=method.result.sample_count,
+                    run_id=method.result.run_id,
+                    measured_at=(
+                        datetime.fromisoformat(method.result.measured_at)
+                        if method.result.measured_at
+                        else None
+                    ),
                 ),
             )
         )

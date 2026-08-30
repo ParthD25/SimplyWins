@@ -6,6 +6,7 @@ just that a request succeeds.
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 EXPECTED_SLUGS = {
@@ -48,7 +49,22 @@ def test_problem_summary_matches_documented_shape(client: TestClient) -> None:
         "decision_question",
         "status",
         "benchmark_definition_version",
+        "measured_count",
+        "method_count",
     }
+
+
+def test_listing_carries_evidence_counts(client: TestClient) -> None:
+    """So a listing can show how far each benchmark has got without fetching
+    every problem in full."""
+    body = client.get("/v1/problems").json()
+    by_slug = {problem["slug"]: problem for problem in body["problems"]}
+
+    assert by_slug["support-ticket-routing"]["measured_count"] == 2
+    assert by_slug["support-ticket-routing"]["method_count"] == 4
+    assert by_slug["form-validation"]["measured_count"] == 0
+    for problem in body["problems"]:
+        assert problem["measured_count"] <= problem["method_count"]
 
 
 def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
@@ -64,6 +80,8 @@ def test_problem_detail_matches_documented_shape(client: TestClient) -> None:
         "decision_question",
         "status",
         "benchmark_definition_version",
+        "measured_count",
+        "method_count",
         "rationale",
         "dataset",
         "default_requirements",
@@ -103,15 +121,39 @@ def test_methods_are_ordered_by_complexity_rank(client: TestClient) -> None:
     assert ranks == [1, 2, 3, 4]
 
 
-def test_every_seeded_result_is_labelled_demo(client: TestClient) -> None:
-    """Nothing in this phase is measured; the API must say so on every result."""
+def test_every_result_declares_a_state_the_api_can_be_held_to(
+    client: TestClient,
+) -> None:
+    """Whatever a result claims, the API must expose the evidence for it."""
     for slug in EXPECTED_SLUGS:
         body = client.get(f"/v1/problems/{slug}").json()
-        assert body["status"] == "DEMO"
         for method in body["methods"]:
-            assert method["result"]["result_state"] == "DEMO"
-            assert method["result"]["raw_artifact_uri"] is None
-            assert method["result"]["measured_at"] is None
+            result = method["result"]
+            assert result["result_state"] in {"DEMO", "MEASURED", "ESTIMATED"}
+            if result["result_state"] == "MEASURED":
+                assert result["run_id"]
+                assert result["raw_artifact_uri"]
+                assert result["measured_at"]
+            else:
+                assert result["raw_artifact_uri"] is None
+                assert result["measured_at"] is None
+
+
+def test_support_ticket_routing_serves_its_measured_results(
+    client: TestClient,
+) -> None:
+    """The two methods that were actually run must reach the API as MEASURED."""
+    body = client.get("/v1/problems/support-ticket-routing").json()
+    by_id = {method["method_id"]: method for method in body["methods"]}
+
+    assert by_id["ticket-rules"]["result"]["result_state"] == "MEASURED"
+    assert by_id["ticket-ml"]["result"]["result_state"] == "MEASURED"
+    assert by_id["ticket-small"]["result"]["result_state"] == "DEMO"
+    assert by_id["ticket-frontier"]["result"]["result_state"] == "DEMO"
+    # The measured figures, not the illustrative ones they replaced.
+    assert by_id["ticket-rules"]["result"]["accuracy"] == pytest.approx(75.69, abs=0.01)
+    assert by_id["ticket-ml"]["result"]["accuracy"] == pytest.approx(89.5, abs=0.01)
+    assert body["dataset"]["sha256"]
 
 
 def test_unknown_slug_returns_standard_error_envelope(client: TestClient) -> None:

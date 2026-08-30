@@ -12,7 +12,7 @@ from functools import lru_cache
 
 # The seed directory is versioned so a definition change ships as a new
 # directory rather than a silent edit to the current one.
-DEFAULT_SEED_VERSION = "v1"
+DEFAULT_SEED_VERSION = "v2"
 DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./simplestwins.db"
 
 
