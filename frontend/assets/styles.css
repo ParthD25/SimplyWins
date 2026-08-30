@@ -130,3 +130,34 @@ a.rail-item:hover strong{color:var(--blue)}
 /* Keep the method description from crowding out the pass/fail columns. */
 .workspace .results-table{min-width:760px}
 .workspace .method-cell{max-width:290px}
+
+/* ============================================================================
+   Evidence states — section 3.1 of PROJECT_STANDARD.md
+   Illustrative figures are shown for context and must read as clearly weaker
+   than measured evidence, never as something that shaped the outcome.
+   ============================================================================ */
+.evidence-banner{background:var(--amberSoft);border:1px solid #f0d9b0;border-left:3px solid #d9a441;border-radius:12px;padding:13px 16px}
+.evidence-banner[hidden]{display:none}
+.evidence-banner strong{display:block;font-size:13.5px;color:#8a5a12;letter-spacing:-.01em}
+.evidence-banner p{margin:6px 0 0;font-size:12.5px;line-height:1.6;color:#7a6338}
+.evidence-banner b{color:#5f4a1f}
+
+.kpi.kpi-lead.kpi-incomplete{background:var(--amberSoft);border-color:#f0d9b0}
+.kpi.kpi-lead.kpi-incomplete span{color:#8a6320}
+.kpi.kpi-lead.kpi-incomplete strong{color:#985f13;font-size:14px;text-transform:none;letter-spacing:-.01em}
+.kpi.kpi-lead.kpi-incomplete small{color:#8a7245;margin-top:5px}
+
+.state-tag{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;padding:3px 7px;border-radius:5px;white-space:nowrap}
+.state-measured{background:var(--greenSoft);color:#0d6f4f;border:1px solid #cbead9}
+.state-demo{background:#f3f4f7;color:#7b8496;border:1px dashed #c9cfda}
+
+/* Illustrative rows recede: no fill, muted text, dashed leading edge. */
+.results-table tr.demo-row{background:#fcfcfd}
+.results-table tr.demo-row td{color:#98a2b3}
+.results-table tr.demo-row .method-cell strong{color:#7c8698;font-weight:640}
+.results-table tr.demo-row td:first-child{box-shadow:inset 3px 0 0 #e3e7ee}
+.results-table tr.demo-row .pass-label,.results-table tr.demo-row .fail-label{color:#a3abb8}
+
+.chart-legend-col span.legend-demo b{color:#98a2b3;font-weight:500}
+.chart-legend-col em.legend-note{color:#98a2b3;font-weight:600}
+.card-incomplete,.rail-incomplete{color:#98643f;font-weight:650}

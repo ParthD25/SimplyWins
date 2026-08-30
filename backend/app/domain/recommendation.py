@@ -32,11 +32,22 @@ CONSTRAINT_AUDITABILITY = "auditability_required"
 COST_BATCH_SIZE = 1_000
 
 
+class DataState(StrEnum):
+    """Provenance of a figure. Section 5 of PROJECT_STANDARD.md."""
+
+    DEMO = "DEMO"
+    MEASURED = "MEASURED"
+    ESTIMATED = "ESTIMATED"
+
+
 class RecommendationStatus(StrEnum):
     """Outcome of applying the decision rule."""
 
     PASSING_METHOD_FOUND = "PASSING_METHOD_FOUND"
     NO_PASSING_METHOD = "NO_PASSING_METHOD"
+    # Not every method has been measured, so no winner can be named — an
+    # unmeasured method could still change the outcome. Section 3.1.
+    BENCHMARK_INCOMPLETE = "BENCHMARK_INCOMPLETE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,7 +67,12 @@ class Requirements:
 
 @dataclass(frozen=True, slots=True)
 class MethodCandidate:
-    """One implementation class competing on a benchmark problem."""
+    """One implementation class competing on a benchmark problem.
+
+    ``result_state`` decides whether this method's numbers may shape the
+    outcome. Only ``MEASURED`` figures do; see the evidence rule in section 3.1
+    of PROJECT_STANDARD.md.
+    """
 
     method_id: str
     complexity_rank: int
@@ -65,6 +81,11 @@ class MethodCandidate:
     cost_per_1k: float
     deterministic: bool
     auditable: bool
+    result_state: DataState = DataState.DEMO
+
+    @property
+    def is_evidence(self) -> bool:
+        return self.result_state is DataState.MEASURED
 
     def monthly_cost(self, monthly_volume: int) -> float:
         """Projected monthly spend for this method at ``monthly_volume`` units."""
@@ -88,13 +109,20 @@ class ConstraintCheck:
 
 @dataclass(frozen=True, slots=True)
 class MethodEvaluation:
-    """A method's full pass/fail record against the active requirements."""
+    """A method's full pass/fail record against the active requirements.
+
+    ``counts_as_evidence`` is false for illustrative figures. Such a method is
+    still evaluated and returned so the UI can show the intended comparison
+    set, but ``passed`` is never allowed to promote it into the outcome.
+    """
 
     method_id: str
     complexity_rank: int
     passed: bool
     monthly_cost: float
     constraint_checks: tuple[ConstraintCheck, ...]
+    result_state: DataState = DataState.DEMO
+    counts_as_evidence: bool = False
 
     @property
     def failed_constraints(self) -> tuple[str, ...]:
@@ -103,13 +131,21 @@ class MethodEvaluation:
 
 @dataclass(frozen=True, slots=True)
 class Recommendation:
-    """The result of applying the decision rule to a set of methods."""
+    """The result of applying the decision rule to a set of methods.
+
+    ``best_measured_method_id`` is a provisional leader among measured methods
+    when the benchmark is incomplete. It is deliberately not the recommendation:
+    a method still awaiting measurement could displace it.
+    """
 
     status: RecommendationStatus
     recommended_method_id: str | None
     reason: str
     evaluations: tuple[MethodEvaluation, ...]
     passing_method_ids: tuple[str, ...]
+    measured_count: int = 0
+    method_count: int = 0
+    best_measured_method_id: str | None = None
 
 
 def evaluate_method(method: MethodCandidate, requirements: Requirements) -> MethodEvaluation:
@@ -149,6 +185,8 @@ def evaluate_method(method: MethodCandidate, requirements: Requirements) -> Meth
         passed=all(check.passed for check in checks),
         monthly_cost=method.monthly_cost(requirements.monthly_volume),
         constraint_checks=tuple(checks),
+        result_state=method.result_state,
+        counts_as_evidence=method.is_evidence,
     )
 
 
@@ -169,17 +207,59 @@ def recommend(
 ) -> Recommendation:
     """Apply the SimplestWins decision rule.
 
-    Returns the lowest-complexity method satisfying every hard requirement. When
-    nothing satisfies them, the status is ``NO_PASSING_METHOD`` and
-    ``recommended_method_id`` is ``None`` — the standard forbids nominating a
-    "closest" method, because a method that misses a hard requirement has not
-    earned a recommendation.
+    Returns the lowest-complexity method satisfying every hard requirement,
+    considering only methods whose results are ``MEASURED``.
+
+    Three outcomes, and two of them name no winner:
+
+    - ``BENCHMARK_INCOMPLETE`` when any method is still unmeasured. An
+      unmeasured method could displace the current leader, so recommending one
+      would overstate what is known.
+    - ``NO_PASSING_METHOD`` when everything is measured but nothing satisfies
+      the requirements. The standard forbids nominating a "closest" method.
+    - ``PASSING_METHOD_FOUND`` otherwise.
     """
     evaluations = tuple(evaluate_method(method, requirements) for method in methods)
-    passing_ids = {evaluation.method_id for evaluation in evaluations if evaluation.passed}
-    passing = [method for method in methods if method.method_id in passing_ids]
 
-    if not passing:
+    # The evidence rule (section 3.1): only MEASURED figures may shape the
+    # outcome. Illustrative methods are still evaluated and returned so the UI
+    # can show the intended comparison set, but they are excluded here.
+    measured = [method for method in methods if method.is_evidence]
+    measured_count = len(measured)
+    method_count = len(methods)
+
+    passing_ids = {
+        evaluation.method_id
+        for evaluation in evaluations
+        if evaluation.passed and evaluation.counts_as_evidence
+    }
+    ranked = sorted(
+        (method for method in measured if method.method_id in passing_ids),
+        key=_selection_key,
+    )
+    passing_method_ids = tuple(method.method_id for method in ranked)
+    best_measured = ranked[0].method_id if ranked else None
+
+    # An unmeasured method could still win, so nothing is recommended until the
+    # whole set is measured. The provisional leader is reported separately and
+    # is explicitly not a recommendation.
+    if measured_count < method_count:
+        return Recommendation(
+            status=RecommendationStatus.BENCHMARK_INCOMPLETE,
+            recommended_method_id=None,
+            reason=(
+                f"Benchmark incomplete: {measured_count} of {method_count} methods "
+                "measured. No recommendation is made until every method has been "
+                "measured, because an unmeasured method could change the outcome."
+            ),
+            evaluations=evaluations,
+            passing_method_ids=passing_method_ids,
+            measured_count=measured_count,
+            method_count=method_count,
+            best_measured_method_id=best_measured,
+        )
+
+    if not ranked:
         return Recommendation(
             status=RecommendationStatus.NO_PASSING_METHOD,
             recommended_method_id=None,
@@ -189,14 +269,18 @@ def recommend(
             ),
             evaluations=evaluations,
             passing_method_ids=(),
+            measured_count=measured_count,
+            method_count=method_count,
         )
 
-    ranked = sorted(passing, key=_selection_key)
     winner = ranked[0]
     return Recommendation(
         status=RecommendationStatus.PASSING_METHOD_FOUND,
         recommended_method_id=winner.method_id,
         reason="Lowest-complexity method satisfying every hard constraint.",
         evaluations=evaluations,
-        passing_method_ids=tuple(method.method_id for method in ranked),
+        passing_method_ids=passing_method_ids,
+        measured_count=measured_count,
+        method_count=method_count,
+        best_measured_method_id=winner.method_id,
     )

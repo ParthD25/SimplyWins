@@ -6,20 +6,62 @@ export function methodMeetsRequirements(method, requirements) {
     (!requirements.auditabilityRequired || method.auditable);
 }
 
-export function getRecommendation(methods, requirements) {
-  const passing = methods
-    .filter((method) => methodMeetsRequirements(method, requirements))
-    .sort((a, b) => a.complexityRank - b.complexityRank || a.costPer1k - b.costPer1k);
+/* Only MEASURED figures may shape an outcome — section 3.1 of
+   PROJECT_STANDARD.md. Anything else is display-only. Defaults to DEMO so the
+   rule fails closed when provenance is missing. */
+export function countsAsEvidence(method) {
+  return (method.resultState ?? 'DEMO') === 'MEASURED';
+}
 
-  if (passing.length) {
-    return { winner: passing[0], passing, fallbackUsed: false, reason: `${passing[0].shortName} is the lowest-complexity approach that clears every active requirement.` };
+export const RECOMMENDATION_STATUS = {
+  PASSING: 'PASSING_METHOD_FOUND',
+  NO_PASSING: 'NO_PASSING_METHOD',
+  INCOMPLETE: 'BENCHMARK_INCOMPLETE',
+};
+
+/* Mirrors the backend rule. Three outcomes, two of which name no winner:
+   an unmeasured method could still displace the current leader, so while any
+   method is unmeasured the answer is BENCHMARK_INCOMPLETE rather than a pick. */
+export function getRecommendation(methods, requirements) {
+  const measured = methods.filter(countsAsEvidence);
+  const measuredCount = measured.length;
+  const methodCount = methods.length;
+
+  const ranked = measured
+    .filter((method) => methodMeetsRequirements(method, requirements))
+    .sort((a, b) =>
+      a.complexityRank - b.complexityRank ||
+      a.costPer1k - b.costPer1k ||
+      a.latencyMs - b.latencyMs ||
+      a.id.localeCompare(b.id));
+
+  const bestMeasured = ranked[0] ?? null;
+  const base = { passing: ranked, bestMeasured, measuredCount, methodCount };
+
+  if (measuredCount < methodCount) {
+    return {
+      ...base,
+      status: RECOMMENDATION_STATUS.INCOMPLETE,
+      winner: null,
+      reason: `Benchmark incomplete: ${measuredCount} of ${methodCount} methods measured. No recommendation is made until every method has been measured, because an unmeasured method could change the outcome.`,
+    };
   }
 
-  const sorted = [...methods].sort((a, b) => {
-    const score = (m) => m.accuracy - Math.log10(m.costPer1k + 1) * 2 - Math.max(0, m.latencyMs - requirements.maxLatencyMs) / 1000;
-    return score(b) - score(a);
-  });
-  return { winner: sorted[0], passing: [], fallbackUsed: true, reason: `No method clears every active requirement. ${sorted[0].shortName} is the closest current option.` };
+  if (!ranked.length) {
+    return {
+      ...base,
+      status: RECOMMENDATION_STATUS.NO_PASSING,
+      winner: null,
+      reason: 'No method clears every active requirement. No winner is nominated.',
+    };
+  }
+
+  return {
+    ...base,
+    status: RECOMMENDATION_STATUS.PASSING,
+    winner: bestMeasured,
+    reason: `${bestMeasured.shortName} is the lowest-complexity approach that clears every active requirement.`,
+  };
 }
 
 export function setupMobileNav() {
@@ -52,7 +94,9 @@ export function renderProblemCards(container, problems = benchmarkProblems) {
     return `<a class="problem-card" href="benchmark.html?problem=${problem.slug}">
       <div class="problem-card-top"><span class="category-icon">${problemIcon(problem.category)}</span><span class="status-chip status-demo">Demo results</span></div>
       <div><div class="problem-category">${problem.category}</div><h3>${problem.title}</h3><p>${problem.description}</p></div>
-      <div class="problem-card-bottom"><span>Current pick: <strong>${recommendation.winner.shortName}</strong></span><span aria-hidden="true">↗</span></div>
+      <div class="problem-card-bottom">${recommendation.winner
+        ? `<span>Recommended: <strong>${recommendation.winner.shortName}</strong></span>`
+        : `<span class="card-incomplete">${recommendation.measuredCount} of ${recommendation.methodCount} measured</span>`}<span aria-hidden="true">↗</span></div>
     </a>`;
   }).join('');
 }
@@ -134,11 +178,12 @@ function renderScatter(problem, requirements, recommendation) {
     <text x="${m.left + 6}" y="${(thresholdY - 7).toFixed(1)}" class="threshold-label">${requirements.minAccuracy}% requirement</text>
     ${problem.results.map((method) => {
       const passes = methodMeetsRequirements(method, requirements);
-      const isWinner = recommendation.winner && method.id === recommendation.winner.id && !recommendation.fallbackUsed;
+      const evidence = countsAsEvidence(method);
+      const isWinner = recommendation.winner && method.id === recommendation.winner.id;
       const cx = x(method.costPer1k).toFixed(1);
       const cy = y(method.accuracy).toFixed(1);
       const ring = isWinner ? `<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#15966b" stroke-width="2"/>` : '';
-      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${METHOD_COLORS[method.kind]}" stroke="#fff" stroke-width="2.5" opacity="${passes ? 1 : 0.55}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${method.latencyMs}ms. ${passes ? 'Meets requirements' : 'Does not meet requirements'}.</title></circle>`;
+      return `${ring}<circle class="data-point" tabindex="0" role="img" data-method="${method.id}" cx="${cx}" cy="${cy}" r="7" fill="${evidence ? METHOD_COLORS[method.kind] : '#fff'}" stroke="${evidence ? '#fff' : METHOD_COLORS[method.kind]}" stroke-width="2.5" stroke-dasharray="${evidence ? '' : '3 2'}" opacity="${evidence ? (passes ? 1 : 0.55) : 0.5}"><title>${method.name}: ${method.accuracy.toFixed(1)}% accuracy, ${money(method.costPer1k)} per 1K, ${method.latencyMs}ms. ${passes ? 'Meets requirements' : 'Does not meet requirements'}. ${evidence ? 'Measured result.' : 'Illustrative only — excluded from the recommendation.'}</title></circle>`;
     }).join('')}
     <text x="${m.left + pw / 2}" y="${H - 8}" text-anchor="middle" class="axis-title">Cost per 1K tasks (USD, log scale)</text>
     <text x="14" y="${m.top + ph / 2}" text-anchor="middle" class="axis-title" transform="rotate(-90 14 ${m.top + ph / 2})">Accuracy (%)</text>
@@ -151,8 +196,12 @@ function renderChartLegend(problem, requirements, recommendation) {
   const host = document.querySelector('[data-chart-legend]');
   if (!host) return;
   host.innerHTML = [...problem.results].sort((a, b) => a.complexityRank - b.complexityRank).map((method) => {
-    const isWinner = recommendation.winner && method.id === recommendation.winner.id && !recommendation.fallbackUsed;
-    return `<span><i style="background:${METHOD_COLORS[method.kind]}"></i><b>${method.shortName}${isWinner ? '<em>Recommended</em>' : ''}</b></span>`;
+    const isWinner = recommendation.winner && method.id === recommendation.winner.id;
+    const evidence = countsAsEvidence(method);
+    const marker = evidence
+      ? `background:${METHOD_COLORS[method.kind]}`
+      : `background:#fff;box-shadow:inset 0 0 0 2px ${METHOD_COLORS[method.kind]}`;
+    return `<span class="${evidence ? '' : 'legend-demo'}"><i style="${marker}"></i><b>${method.shortName}${isWinner ? '<em>Recommended</em>' : ''}${evidence ? '' : '<em class="legend-note">Illustrative</em>'}</b></span>`;
   }).join('');
 }
 
@@ -162,10 +211,12 @@ function renderChartTable(problem, requirements) {
   const host = document.querySelector('[data-chart-table]');
   if (!host) return;
   host.innerHTML = `<table class="results-table"><caption class="sr-only">Chart data in table form</caption>
-    <thead><tr><th>Method</th><th>Accuracy</th><th>Cost / 1K</th><th>Median latency</th><th>Meets requirements</th></tr></thead>
+    <thead><tr><th>Method</th><th>Evidence</th><th>Accuracy</th><th>Cost / 1K</th><th>Median latency</th><th>Meets requirements</th></tr></thead>
     <tbody>${[...problem.results].sort((a, b) => a.complexityRank - b.complexityRank).map((method) => {
       const passes = methodMeetsRequirements(method, requirements);
-      return `<tr><td><span class="method-badge method-${method.kind}">${method.shortName}</span></td>
+      const evidence = countsAsEvidence(method);
+      return `<tr class="${evidence ? '' : 'demo-row'}"><td><span class="method-badge method-${method.kind}">${method.shortName}</span></td>
+        <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
         <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
         <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td></tr>`;
     }).join('')}</tbody></table>`;
@@ -174,21 +225,40 @@ function renderChartTable(problem, requirements) {
 function renderKpis(problem, requirements, recommendation) {
   const host = document.querySelector('[data-kpis]');
   if (!host) return;
-  const passed = !recommendation.fallbackUsed;
-  const winner = recommendation.winner;
+  const { winner, bestMeasured, status, measuredCount, methodCount } = recommendation;
+  const complete = status === RECOMMENDATION_STATUS.PASSING;
 
-  // With no passing method there is no recommendation, so the derived metrics
-  // are left blank rather than borrowed from a method that failed.
-  const value = (render) => (passed ? render(winner) : '—');
+  // With no winner the derived metrics are left blank rather than borrowed from
+  // a method that has not earned them.
+  const value = (render) => (complete ? render(winner) : '—');
+
+  const leadCard = complete
+    ? `<div class="kpi kpi-lead"><span>Recommended</span><strong>${winner.shortName}</strong></div>`
+    : status === RECOMMENDATION_STATUS.INCOMPLETE
+      ? `<div class="kpi kpi-lead kpi-incomplete"><span>Benchmark incomplete</span><strong>${measuredCount} of ${methodCount} measured</strong>${bestMeasured ? `<small>Best measured so far: ${bestMeasured.shortName} — not a recommendation</small>` : '<small>No measured method clears the requirements yet</small>'}</div>`
+      : `<div class="kpi kpi-lead kpi-none"><span>Recommendation</span><strong>No passing method</strong></div>`;
+
   host.innerHTML = `
-    <div class="kpi kpi-lead${passed ? '' : ' kpi-none'}">
-      <span>${passed ? 'Best Recommendation' : 'Recommendation'}</span>
-      <strong>${passed ? winner.shortName : 'No passing method'}</strong>
-    </div>
-    <div class="kpi"><span>Meets Requirements</span><strong class="${passed ? 'kpi-yes' : 'kpi-no'}">${passed ? '✓ Yes' : '× No'}</strong></div>
+    ${leadCard}
+    <div class="kpi"><span>Meets Requirements</span><strong class="${complete ? 'kpi-yes' : 'kpi-no'}">${complete ? '✓ Yes' : '—'}</strong></div>
     <div class="kpi"><span>Accuracy (Best)</span><strong>${value((w) => `${w.accuracy.toFixed(1)}%`)}</strong></div>
     <div class="kpi"><span>Est. Monthly Cost</span><strong>${value((w) => money(monthlyCost(w, requirements)))}</strong><small>at ${compact(requirements.monthlyVolume)} / month</small></div>
     <div class="kpi"><span>Est. Latency (Best)</span><strong>${value((w) => `${w.latencyMs}ms`)}</strong></div>`;
+}
+
+/* States the evidence position before any numbers are read. Section 3.1
+   requires incompleteness to be visible, not merely implied. */
+function renderEvidenceBanner(recommendation) {
+  const host = document.querySelector('[data-evidence-banner]');
+  if (!host) return;
+  if (recommendation.status !== RECOMMENDATION_STATUS.INCOMPLETE) {
+    host.hidden = true;
+    return;
+  }
+  const { measuredCount, methodCount, bestMeasured } = recommendation;
+  host.hidden = false;
+  host.innerHTML = `<strong>Benchmark incomplete — ${measuredCount} of ${methodCount} methods measured.</strong>
+    <p>Illustrative figures are shown for context but are excluded from the ranking, the chart's frontier, and any recommendation. No winner is named until every method has been measured, because an unmeasured method could change the outcome.${bestMeasured ? ` Best measured result so far is <b>${bestMeasured.shortName}</b>, which is not a recommendation.` : ''}</p>`;
 }
 
 function renderRequirementChips(requirements) {
@@ -206,9 +276,12 @@ function renderTable(problem, requirements, recommendation) {
   if (!body) return;
   body.innerHTML = [...problem.results].sort((a, b) => a.complexityRank - b.complexityRank).map((method) => {
     const passes = methodMeetsRequirements(method, requirements);
-    const isWinner = recommendation.winner && method.id === recommendation.winner.id && !recommendation.fallbackUsed;
-    return `<tr class="${isWinner ? 'winner-row' : ''}">
+    const isWinner = recommendation.winner && method.id === recommendation.winner.id;
+    const evidence = countsAsEvidence(method);
+    const rowClass = [isWinner ? 'winner-row' : '', evidence ? '' : 'demo-row'].filter(Boolean).join(' ');
+    return `<tr class="${rowClass}">
       <td><div class="method-cell"><span class="method-badge method-${method.kind}">${method.shortName}</span><div><strong>${method.name}</strong><small>${method.notes}</small></div></div></td>
+      <td><span class="state-tag state-${evidence ? 'measured' : 'demo'}">${evidence ? 'Measured' : 'Illustrative'}</span></td>
       <td>${method.accuracy.toFixed(1)}%</td><td>${money(method.costPer1k)}</td><td>${method.latencyMs}ms</td>
       <td class="${method.auditable ? 'pass-label' : 'fail-label'}">${method.auditable ? '✓ Yes' : '× No'}</td>
       <td class="${passes ? 'pass-label' : 'fail-label'}">${passes ? '✓ Pass' : '× No'}</td>
@@ -237,9 +310,12 @@ function renderRail(problem) {
       .slice(0, 3)
       .map((entry) => {
         const pick = getRecommendation(entry.results, entry.requirements);
+        const detail = pick.winner
+          ? `→ <span class="rail-pick">${pick.winner.shortName}</span>`
+          : `<span class="rail-incomplete">${pick.measuredCount} of ${pick.methodCount} measured</span>`;
         return `<a class="rail-item" href="benchmark.html?problem=${entry.slug}">
           <span class="rail-icon" aria-hidden="true">${problemIcon(entry.category)}</span>
-          <div><strong>${entry.title}</strong><small>→ <span class="rail-pick">${pick.winner.shortName}</span></small></div>
+          <div><strong>${entry.title}</strong><small>${detail}</small></div>
         </a>`;
       }).join('');
   }
@@ -283,6 +359,7 @@ export function setupBenchmarkPage() {
     setControls();
     renderRequirementChips(requirements);
     const recommendation = getRecommendation(problem.results, requirements);
+    renderEvidenceBanner(recommendation);
     renderKpis(problem, requirements, recommendation);
     renderScatter(problem, requirements, recommendation);
     renderChartLegend(problem, requirements, recommendation);
