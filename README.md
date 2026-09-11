@@ -1,4 +1,4 @@
-# SimplyWin
+# SimplyWins
 
 ### Complexity must earn its place.
 
@@ -6,13 +6,13 @@ Does this job need AI at all? Compare your current process with notifications, t
 
 **[Explore the live product](https://simply-wins.vercel.app)** · **[Inspect the benchmark evidence](BENCHMARKS.md)** · **[Download results](benchmark-results.csv)** · **[Release status](STATUS.md)**
 
-![The SimplyWin decision workspace](images/home.png)
+![The SimplyWins decision workspace](images/home.png)
 
 ## What the product actually does
 
 “Email a parent when their child passes” does not need AI if an approved result
 is already recorded. A condition, template and delivery queue can handle it.
-Judging an essay is a separate task. SimplyWin helps identify the distinction;
+Judging an essay is a separate task. SimplyWins helps identify the distinction;
 it does not send emails or make decisions about children.
 
 **[Try the notification example](https://simply-wins.vercel.app/assess.html?example=notification)** · **[Purpose and validation](WHAT_IT_DOES.md)**
@@ -21,7 +21,7 @@ it does not send emails or make decisions about children.
 
 ## Start with the decision
 
-Teams often choose a model before defining the problem. SimplyWin reverses that sequence: describe the work, set quality and operating requirements, then compare measured approaches. A model can help structure a task description; explicit rules produce a provisional assessment. Only complete measured comparisons can support a benchmark recommendation.
+Teams often choose a model before defining the problem. SimplyWins reverses that sequence: describe the work, set quality and operating requirements, then compare measured approaches. A model can help structure a task description; explicit rules produce a provisional assessment. Only complete measured comparisons can support a benchmark recommendation.
 
 ## Product walkthrough
 
@@ -42,10 +42,22 @@ The interface uses an interactive exploded 3D method stack, layered editorial la
 - Chance, majority-class, and exact train/test overlap floors alongside accuracy.
 - Estimated costs visibly separated from measurements and excluded from ranking.
 - Private experiments separated from the published evidence catalogue.
+- Optional model-assisted intake names the provider and model that filled the
+  fields; the deterministic rubric still produces the verdict.
+- Groq, OpenAI, Anthropic, Moonshot and Kimi Code credentials are identified
+  separately, encrypted server-side and never returned to the browser.
 
 ## Release scope
 
-The public evidence explorer is live. All published benchmark records were verified against saved predictions on September 7, 2026. The full local CI suite passed, and both hosted models passed fresh adapter connectivity checks. Production account sign-in still requires deployment configuration; the complete signed-in private experiment journey has not been verified. See [status and remaining work](STATUS.md).
+The public evidence explorer and signed-in assessment path are live. All
+published benchmark records were verified against saved predictions. On
+September 11, 2026, a fresh production-browser test signed in, stored a Groq
+credential through the encrypted server vault, and completed a Groq-assisted
+notification assessment. The model filled a correctable task profile; the
+published rubric independently returned **No AI — start with conventional
+automation**. A Kimi Code credential authenticated successfully but could not
+run inference because its account had reached its monthly quota. See [status
+and remaining work](STATUS.md).
 
 ## About this repository
 

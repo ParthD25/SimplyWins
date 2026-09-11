@@ -1,6 +1,6 @@
 # Release status
 
-Verified September 7, 2026.
+Verified September 11, 2026.
 
 ## Ready to showcase
 
@@ -11,10 +11,22 @@ Verified September 7, 2026.
 - Local CI passed: lint, formatting, strict types, migration drift, backend tests, benchmark smoke run, responsive browser checks, and Firestore rules tests.
 - The live home, library, comparison, and account pages loaded without JavaScript page exceptions during browser inspection.
 - Both Groq comparator models answered a fresh bounded adapter check. This is a connectivity check, not another benchmark measurement.
+- Production Firebase sign-in and the encrypted provider vault were exercised
+  in a fresh browser. A Groq key was accepted, stored, listed without exposing
+  any part of it, and used by the deployed assessment route.
+- A live Groq-assisted notification assessment completed through
+  `openai/gpt-oss-120b`. The response named its provider and model, while the
+  deterministic rubric independently returned **No AI — conventional
+  automation**.
+- Kimi Code is distinct from Moonshot Platform in provider selection and key
+  routing. Its tested credential authenticated and listed the supported models;
+  inference stopped at the provider's monthly-quota limit, so Kimi completion
+  remains unverified.
 
 ## Before a full production launch
 
-1. Supply Firebase's public web configuration to the production frontend. Verify sign-in, saving a provider credential, quoting and running a private experiment, reading its result, and deleting the credential from a real browser session.
+1. Quote and run a private benchmark experiment in production, read its saved
+   result, and exercise credential deletion again with the current release.
 2. Verify persistent storage, backups and restoration, operational monitoring, and error reporting. Test concurrency; long-running experiments need durable jobs and shared rate limits before scaling beyond the current bounded service.
 3. Validate the assessment rubric with independent domain reviewers and held-out workflows, including hybrid tasks and false AI recommendations. Measure actual workflow and review costs. Validate quality on larger, independently held-out and out-of-domain data. Investigate complaint routing's failure to meet the default quality bar. Use protected-group evidence where appropriate before making any demographic fairness claim.
 4. Review remaining development-tool dependency advisories and validate each additional provider path before advertising it as supported in production.

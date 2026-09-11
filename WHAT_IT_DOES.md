@@ -1,6 +1,6 @@
 # Does the job actually need AI?
 
-SimplyWin is a technology decision aid from an AI strategy project. State the
+SimplyWins is a technology decision aid from an AI strategy project. State the
 outcome, what happens today, available inputs and a known procedure. A published
 rubric suggests the simplest starting approach and what to test. Its output is
 ASSESSED, not a measured guarantee or a business investment approval.
@@ -23,6 +23,9 @@ output or missing training labels alone from pushing a task toward an LLM.
 Editable examples work without a provider key. Each assessment explains a
 simpler alternative, assumptions, and baseline validation. Optional AI-assisted
 intake fills the same correctable profile and can still misread a description.
+The signed-in path supports separately identified provider credentials rather
+than assuming every key is Groq. The response names the provider and model that
+filled the fields; neither is allowed to choose the verdict.
 
 Spam and sentiment benchmarks remain supporting classification experiments.
 Their scores cannot validate email delivery or establish that a visitor needs AI.
@@ -53,12 +56,22 @@ corrected. Subsequent checks returned the expected lookup and feedback
 candidates; the notification returned conventional automation. Provider errors
 also occurred. These are smoke checks, not a measured reliability rate.
 
+On September 11, 2026, a fresh production-browser test stored a Groq key in the
+server-side encrypted vault and completed the notification example through
+`openai/gpt-oss-120b`. The model produced the task profile and the deterministic
+rubric returned **No AI**. The same release recognized Kimi Code credentials
+separately from Moonshot Platform credentials. A Kimi key passed authentication
+and model discovery but inference was refused because that account's monthly
+quota was exhausted. This distinguishes a functioning adapter from an available
+provider account.
+
 The independent JsonLogic example checked approved, failed, missing, draft,
 duplicate, unverified-contact and incorrect-type inputs without sending a
 message. These authored cases are functional tests, not a measured corpus.
 
-Next: independent domain reviewers and held-out workflow examples, ambiguous
+Next: a production private-benchmark run, independent domain reviewers and
+held-out workflow examples, ambiguous
 hybrid tasks, false AI recommendations, missed useful AI opportunities, actual
-integration and review costs, and production account verification. Rules can
+integration and review costs. Rules can
 encode unfair policy; no demographic fairness certification is claimed.
 See [release limitations](STATUS.md).
