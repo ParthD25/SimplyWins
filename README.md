@@ -1,4 +1,4 @@
-# SimplyWins
+# SimplyWin
 
 ### Complexity must earn its place.
 
@@ -6,13 +6,13 @@ Does this job need AI at all? Compare your current process with notifications, t
 
 **[Explore the live product](https://simply-wins.vercel.app)** · **[Inspect the benchmark evidence](BENCHMARKS.md)** · **[Download results](benchmark-results.csv)** · **[Release status](STATUS.md)**
 
-![The SimplyWins decision workspace](images/home.png)
+![The SimplyWin decision workspace](images/home.png)
 
 ## What the product actually does
 
 “Email a parent when their child passes” does not need AI if an approved result
 is already recorded. A condition, template and delivery queue can handle it.
-Judging an essay is a separate task. SimplyWins helps identify the distinction;
+Judging an essay is a separate task. SimplyWin helps identify the distinction;
 it does not send emails or make decisions about children.
 
 **[Try the notification example](https://simply-wins.vercel.app/assess.html?example=notification)** · **[Purpose and validation](WHAT_IT_DOES.md)**
@@ -21,7 +21,7 @@ it does not send emails or make decisions about children.
 
 ## Start with the decision
 
-Teams often choose a model before defining the problem. SimplyWins reverses that sequence: describe the work, set quality and operating requirements, then compare measured approaches. A model can help structure a task description; explicit rules produce a provisional assessment. Only complete measured comparisons can support a benchmark recommendation.
+Teams often choose a model before defining the problem. SimplyWin reverses that sequence: describe the work, set quality and operating requirements, then compare measured approaches. A model can help structure a task description; explicit rules produce a provisional assessment. Only complete measured comparisons can support a benchmark recommendation.
 
 ## Product walkthrough
 
