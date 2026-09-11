@@ -1,6 +1,6 @@
 # Does the job actually need AI?
 
-SimplyWins is a technology decision aid from an AI strategy project. State the
+SimplyWin is a technology decision aid from an AI strategy project. State the
 outcome, what happens today, available inputs and a known procedure. A published
 rubric suggests the simplest starting approach and what to test. Its output is
 ASSESSED, not a measured guarantee or a business investment approval.
