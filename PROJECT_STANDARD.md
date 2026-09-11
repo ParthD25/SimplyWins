@@ -1,9 +1,9 @@
-# SimplestWins Project Standard
+# SimplyWins Project Standard
 
-This file is the source of truth for how SimplestWins is built. If implementation and this standard disagree, stop and update one deliberately. Do not let coding agents invent new architecture, naming, metrics, or product behavior without changing this document first.
+This file is the source of truth for how SimplyWins is built. If implementation and this standard disagree, stop and update one deliberately. Do not let coding agents invent new architecture, naming, metrics, or product behavior without changing this document first.
 
 ## 1. Product thesis
-SimplestWins answers one question: **what is the lowest-complexity technical approach that satisfies the operating requirements for a task?**
+SimplyWins answers one question: **what is the lowest-complexity technical approach that satisfies the operating requirements for a task?**
 
 The product is not an LLM leaderboard. It compares implementation classes such as deterministic rules, traditional ML, smaller learned models, and frontier LLMs under the same task, dataset, and constraints.
 
@@ -26,11 +26,11 @@ The product is not an LLM leaderboard. It compares implementation classes such a
 
 ### 3.1 Evidence rule
 
-**No value may influence a SimplestWins recommendation unless its provenance
+**No value may influence a SimplyWins recommendation unless its provenance
 state is `MEASURED`. A benchmark whose method set mixes provenance states
 cannot produce a final recommendation.**
 
-This is the load-bearing rule of the product. SimplestWins exists to answer a
+This is the load-bearing rule of the product. SimplyWins exists to answer a
 question with evidence; a recommendation shaped even partly by illustrative
 numbers is the failure the project is built to prevent.
 

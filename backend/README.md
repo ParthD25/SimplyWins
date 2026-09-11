@@ -1,7 +1,7 @@
-# SimplestWins Backend
+# SimplyWins Backend
 
 FastAPI service that owns the benchmark problem definitions and applies the
-SimplestWins decision rule: **the lowest-complexity method that satisfies every
+SimplyWins decision rule: **the lowest-complexity method that satisfies every
 hard operating requirement wins, and when nothing satisfies them, nothing wins.**
 
 Phase 2 (Backend Foundation) and the first half of Phase 3 (benchmark runner)

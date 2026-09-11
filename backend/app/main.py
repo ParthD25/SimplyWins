@@ -21,7 +21,7 @@ from app.seed.loader import seed_problems
 
 logger = logging.getLogger(__name__)
 
-API_TITLE = "SimplestWins API"
+API_TITLE = "SimplyWins API"
 # Application release version. The /v1 path prefix is the contract version and
 # changes only on a breaking schema change.
 API_VERSION = "0.9.0"

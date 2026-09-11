@@ -1,4 +1,4 @@
-"""The SimplestWins decision rule.
+"""The SimplyWins decision rule.
 
 This module is the authoritative implementation of section 3 of
 ``PROJECT_STANDARD.md``. It is deliberately pure: no I/O, no ORM types, no
@@ -213,7 +213,7 @@ def recommend(
     methods: Sequence[MethodCandidate],
     requirements: Requirements,
 ) -> Recommendation:
-    """Apply the SimplestWins decision rule.
+    """Apply the SimplyWins decision rule.
 
     Returns the lowest-complexity method satisfying every hard requirement,
     considering only methods whose results are ``MEASURED``.

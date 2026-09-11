@@ -4,7 +4,7 @@ Copy the prompt below into the coding agent from the **root of this repository**
 
 ---
 
-You are implementing the backend for the existing SimplestWins project. Do not redesign the product and do not rewrite the frontend.
+You are implementing the backend for the existing SimplyWins project. Do not redesign the product and do not rewrite the frontend.
 
 ## Read before coding
 Read these files completely and treat them as binding requirements:

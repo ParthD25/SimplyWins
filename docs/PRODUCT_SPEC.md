@@ -1,7 +1,7 @@
 # Product Specification
 
 ## Product
-**SimplestWins** — a public benchmark and decision tool for determining whether a task needs rules, traditional ML, a smaller model, or a frontier LLM.
+**SimplyWins** — a public benchmark and decision tool for determining whether a task needs rules, traditional ML, a smaller model, or a frontier LLM.
 
 ## Primary audience
 - engineering students and practitioners learning AI system design

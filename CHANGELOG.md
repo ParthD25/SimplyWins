@@ -261,7 +261,7 @@ against its success/failure symmetry, which depends on no typed-in constant.
 
 ## 0.4.0 — The evidence rule
 - Added section 3.1 to `PROJECT_STANDARD.md`: **no value may influence a
-  SimplestWins recommendation unless its provenance state is `MEASURED`, and a
+  SimplyWins recommendation unless its provenance state is `MEASURED`, and a
   benchmark whose method set mixes states cannot produce a final
   recommendation.** This is now the load-bearing rule of the product.
 - `recommend()` enforces it. `DEMO` and `ESTIMATED` methods are still evaluated
@@ -359,7 +359,7 @@ Not built in this phase, by design: the benchmark runner, `/v1/runs`, and any
 model-provider integration. Those are Phase 3.
 
 ## 0.1.0 — Frontend prototype
-- Established SimplestWins project standard.
+- Established SimplyWins project standard.
 - Added product, data, API, design, QA, and implementation documentation.
 - Built responsive static frontend.
 - Added six demo benchmark problems.

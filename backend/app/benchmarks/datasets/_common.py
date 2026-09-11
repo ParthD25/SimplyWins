@@ -27,7 +27,7 @@ from pathlib import Path
 
 CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 # A plain identifying agent; some public data hosts reject the urllib default.
-USER_AGENT = "SimplestWins-benchmark/1.0 (+https://github.com/ParthD25/SimplyWins)"
+USER_AGENT = "SimplyWins-benchmark/1.0 (+https://github.com/ParthD25/SimplyWins)"
 
 
 @dataclass(frozen=True, slots=True)

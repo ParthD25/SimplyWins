@@ -521,7 +521,7 @@ export async function setupBenchmarkPage() {
   renderSourceNote([problem]);
   let requirements = structuredClone(problem.requirements);
 
-  document.title = `${problem.title} — SimplestWins`;
+  document.title = `${problem.title} — SimplyWins`;
   const text = {
     title: problem.title,
     category: problem.category,

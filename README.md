@@ -1,8 +1,8 @@
-# SimplestWins
+# SimplyWins
 
 **Does this actually need AI?**
 
-SimplestWins benchmarks several technical approaches to the same task and
+SimplyWins benchmarks several technical approaches to the same task and
 recommends the least-complex one that satisfies the real operating
 requirements — or declines to recommend anything, when the evidence does not
 support a choice.
@@ -11,7 +11,7 @@ support a choice.
 
 ## The rule that governs everything
 
-> No value may influence a SimplestWins recommendation unless its provenance
+> No value may influence a SimplyWins recommendation unless its provenance
 > state is `MEASURED`. A benchmark whose method set mixes provenance states
 > cannot produce a final recommendation.
 

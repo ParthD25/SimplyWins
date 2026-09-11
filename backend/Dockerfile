@@ -1,4 +1,4 @@
-# Runtime image for the SimplestWins API.
+# Runtime image for the SimplyWins API.
 #
 # The benchmark runner is deliberately NOT installed here: it pulls scikit-learn
 # and its native stack, which the API never imports. Benchmarks are executed
